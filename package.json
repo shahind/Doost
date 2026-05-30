@@ -12,6 +12,8 @@
     "preview": "vite preview",
     "apk:sync": "npm run build && npx cap sync",
     "apk:build": "npm run apk:sync && cd android && gradlew assembleDebug && cd ..",
+    "android:assets": "npx capacitor-assets generate --android",
+    "android:dev": "npm run apk:build && adb install -r android\\app\\build\\outputs\\apk\\debug\\app-debug.apk",
     "predeploy": "npm run build:ghpages",
     "deploy": "gh-pages -d dist"
   },
@@ -24,6 +26,7 @@
     "react-dom": "^19.2.6"
   },
   "devDependencies": {
+    "@capacitor/assets": "^3.0.5",
     "@eslint/js": "^10.0.1",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
