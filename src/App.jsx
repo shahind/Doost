@@ -384,7 +384,12 @@ export default function DoostApp() {
           </button>
         )}
       </div>
-      <h1 className="text-lg font-bold truncate flex-1 text-center font-poem text-xl">{title || 'دوست'}</h1>
+      {title? (
+          <h1 className="text-lg font-bold truncate flex-1 text-center font-poem text-xl">{title}</h1>
+        ):(
+          <img src="logo.png" class="max-h-[100px]"></img>
+        )
+      }
       <div className="w-16 flex justify-end">
         {rightAction}
       </div>
@@ -534,7 +539,7 @@ export default function DoostApp() {
 
     return (
       <div className="animate-in fade-in duration-300 pb-24">
-        <AppBar title="دوست" showBack={false} />
+        <AppBar title="" showBack={false} />
         
         <div className="p-4 md:p-6 max-w-4xl mx-auto">
           
@@ -963,7 +968,7 @@ export default function DoostApp() {
         <div className="absolute inset-0 persian-pattern opacity-10 mix-blend-overlay"></div>
         <div className="relative z-10 flex flex-col items-center">
           <div className="w-24 h-24 bg-[#FAF4ED] rounded-3xl shadow-2xl flex items-center justify-center mb-8 rotate-3">
-            <BookOpen size={48} className="text-[#A00A0F] -rotate-3" strokeWidth={1.5} />
+            <img src="logo.png" class="max-h-[50px]"></img>
           </div>
           <h1 className="text-4xl font-extrabold mb-3 tracking-wider text-[#FAF4ED] shadow-sm font-poem">دوست</h1>
           <p className="text-[#FAF4ED]/70 font-medium mb-12">گنجینه شعر و ادب پارسی</p>
