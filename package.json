@@ -8,8 +8,6 @@
     "dev": "vite",
     "build": "vite build",
     "build:ghpages": "vite build --mode ghpages",
-    "build:electron": "vite build --mode localfile",
-    "build:cordova": "vite build --mode localfile",
     "lint": "eslint .",
     "preview": "vite preview",
     "predeploy": "npm run build:ghpages",
