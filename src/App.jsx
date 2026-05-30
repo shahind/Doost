@@ -47,6 +47,11 @@ const fontStyles = `
   
   .pb-safe { padding-bottom: env(safe-area-inset-bottom, 16px); }
   .pt-safe { padding-top: env(safe-area-inset-top, 0px); }
+
+  .versesbox{
+    background-image: url("bg.png");
+    background-repeat: repeat;
+  }
 `;
 
 // --- MOCK DATA FALLBACK ---
@@ -376,7 +381,7 @@ export default function DoostApp() {
 
   // --- NATIVE APP COMPONENTS ---
   const AppBar = ({ title, showBack, rightAction }) => (
-    <header className="sticky top-0 z-40 bg-[#35646A] text-[#FAF4ED] shadow-md px-4 py-3 pt-safe flex items-center justify-between">
+    <header className="sticky top-0 z-40 bg-[#35646A] text-[#FAF4ED] shadow-md px-4 py-3 flex items-center justify-between">
       <div className="w-16 flex justify-start">
         {showBack && (
           <button onClick={goBack} className="p-2 -ml-2 rounded-full hover:bg-white/10 active:bg-white/20 transition-colors">
@@ -422,7 +427,7 @@ export default function DoostApp() {
   };
 
   const BottomNav = () => (
-    <nav className="fixed bottom-0 w-full bg-[#FAF4ED]/95 backdrop-blur-md border-t border-[#35646A]/10 px-6 py-2 pb-safe flex justify-between items-center z-50 shadow-[0_-4px_15px_rgba(55,50,50,0.05)]">
+    <nav className="fixed bottom-0 w-full bg-[#FAF4ED]/95 backdrop-blur-md border-t border-[#35646A]/10 px-6 py-2 pb-safe flex justify-between items-center z-50 shadow-[0_-4px_15px_rgba(55,50,50,0.15)]">
       <button onClick={() => setViewStack([{name: 'home', params: {}}])} className={`flex flex-col items-center p-2 rounded-xl transition-colors ${currentView.name === 'home' ? 'text-[#A00A0F]' : 'text-[#373232]/60'}`}>
         <Home size={24} className={currentView.name === 'home' ? 'fill-[#A00A0F]/10' : ''} />
         <span className="text-[10px] mt-1 font-bold">خانه</span>
@@ -538,7 +543,7 @@ export default function DoostApp() {
     };
 
     return (
-      <div className="animate-in fade-in duration-300 pb-24">
+      <div className="versesbox animate-in fade-in duration-300 pb-24">
         <AppBar title="" showBack={false} />
         
         <div className="p-4 md:p-6 max-w-4xl mx-auto">
@@ -598,7 +603,7 @@ export default function DoostApp() {
     const poems = queryData('getPoemsByCat', { cat_id: id });
 
     return (
-      <div className="animate-in slide-in-from-right-4 duration-300 pb-24 min-h-screen bg-[#FAF4ED]">
+      <div className="versesbox animate-in slide-in-from-right-4 duration-300 pb-24 min-h-screen bg-[#FAF4ED]">
         <AppBar 
           title={title} 
           showBack={true} 
@@ -743,7 +748,7 @@ export default function DoostApp() {
     };
 
     return (
-      <div className="animate-in fade-in duration-300 pb-24 min-h-screen">
+      <div className="versesbox animate-in fade-in duration-300 pb-24 min-h-screen">
         <AppBar 
           title={title} 
           showBack={true} 
@@ -822,7 +827,7 @@ export default function DoostApp() {
     };
 
     return (
-      <div className="animate-in fade-in duration-300 pb-24 min-h-screen bg-[#FAF4ED]">
+      <div className="versesbox animate-in fade-in duration-300 pb-24 min-h-screen bg-[#FAF4ED]">
         <AppBar title="جستجوی پیشرفته" showBack={false} rightAction={
            <button onClick={() => updateSearch({ showFilters: !showFilters })} className={`p-2 rounded-full transition-colors ${showFilters ? 'bg-white/20' : 'active:bg-white/20'}`}>
               <Filter size={20} />
@@ -925,7 +930,7 @@ export default function DoostApp() {
   };
 
   const FavoritesView = () => (
-    <div className="animate-in fade-in duration-300 pb-24 min-h-screen bg-[#FAF4ED]">
+    <div className="versesboxanimate-in fade-in duration-300 pb-24 min-h-screen bg-[#FAF4ED]">
       <AppBar title="نشان‌ها" showBack={false} />
       
       <div className="p-4 md:p-6 max-w-3xl mx-auto">
