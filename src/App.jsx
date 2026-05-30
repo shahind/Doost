@@ -967,10 +967,9 @@ export default function DoostApp() {
       <div className="min-h-screen flex flex-col items-center justify-center bg-[#35646A] text-[#FAF4ED] relative overflow-hidden">
         <div className="absolute inset-0 persian-pattern opacity-10 mix-blend-overlay"></div>
         <div className="relative z-10 flex flex-col items-center">
-          <div className="w-24 h-24 bg-[#FAF4ED] rounded-3xl shadow-2xl flex items-center justify-center mb-8 rotate-3">
-            <img src="logo.png" class="max-h-[50px]"></img>
+          <div className="w-48 h-48 bg-[rgb(250 244 237 / 43%)] rounded-3xl shadow-2xl flex items-center justify-center mb-8 rotate-3">
+            <img src="logo.png"></img>
           </div>
-          <h1 className="text-4xl font-extrabold mb-3 tracking-wider text-[#FAF4ED] shadow-sm font-poem">دوست</h1>
           <p className="text-[#FAF4ED]/70 font-medium mb-12">گنجینه شعر و ادب پارسی</p>
           <Loader2 className="animate-spin text-[#FAF4ED]/50" size={32} />
         </div>
