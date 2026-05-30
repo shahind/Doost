@@ -10,10 +10,15 @@
     "build:ghpages": "vite build --mode ghpages",
     "lint": "eslint .",
     "preview": "vite preview",
+    "apk:sync": "npm run build && npx cap sync",
+    "apk:build": "npm run apk:sync && cd android && gradlew assembleDebug && cd ..",
     "predeploy": "npm run build:ghpages",
     "deploy": "gh-pages -d dist"
   },
   "dependencies": {
+    "@capacitor/android": "^8.3.4",
+    "@capacitor/cli": "^8.3.4",
+    "@capacitor/core": "^8.3.4",
     "lucide-react": "^1.17.0",
     "react": "^19.2.6",
     "react-dom": "^19.2.6"
