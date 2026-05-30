@@ -141,7 +141,7 @@ export default function DoostApp() {
           locateFile: file => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/${file}`
         });
         
-        const response = await fetch('ganjoor.s3db');
+        const response = await fetch(import.meta.env.VITE_DB_URL);
         if (!response.ok) throw new Error("Local DB not found");
         
         const buf = await response.arrayBuffer();
@@ -149,7 +149,7 @@ export default function DoostApp() {
         setDb(database);
         setUseMockData(false);
       } catch (err) {
-        console.warn("Could not fetch ganjoor.s3db. Falling back to Mock Data for preview.", err);
+        console.warn("Could not fetch database Falling back to Mock Data for preview.", err);
         setUseMockData(true);
       } finally {
         setAppLoading(false);
