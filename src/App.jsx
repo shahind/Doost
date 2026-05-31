@@ -6,7 +6,28 @@ import {
 
 // --- STYLES & FONTS ---
 const fontStyles = `
-  @import url('https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400&family=Estedad:wght@300;400;600;800&display=swap');
+  @font-face {
+    font-family: 'Amiri';
+    src: url('/fonts/Amiri-Regular.ttf') format('truetype');
+    font-weight: 400;
+    font-style: normal;
+  }
+  @font-face {
+    font-family: 'Amiri';
+    src: url('/fonts/Amiri-Bold.ttf') format('truetype');
+    font-weight: 700;
+    font-style: normal;
+  }
+  @font-face {
+    font-family: 'Estedad';
+    src: url('/fonts/Estedad-Regular.ttf') format('truetype');
+    font-weight: 400;
+  }
+  @font-face {
+    font-family: 'Estedad';
+    src: url('/fonts/Estedad-Bold.ttf') format('truetype');
+    font-weight: 700;
+  }
   
   :root {
     --color-red: #A00A0F;
@@ -52,6 +73,28 @@ const fontStyles = `
     background-image: url("bg.png");
     background-repeat: repeat;
   }
+
+  /* --- CUSTOM ANIMATIONS --- */
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes slideInRight {
+    from { transform: translateX(1rem); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+  }
+  @keyframes slideInBottomFull {
+    from { transform: translateY(100%); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+  @keyframes slideInTop {
+    from { transform: translateY(-0.5rem); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+  .animate-in.fade-in { animation: fadeIn 300ms ease-out forwards; }
+  .animate-in.slide-in-from-right-4 { animation: slideInRight 300ms ease-out forwards; }
+  .animate-in.slide-in-from-bottom-full { animation: slideInBottomFull 300ms ease-out forwards; }
+  .animate-in.slide-in-from-top-2 { animation: slideInTop 300ms ease-out forwards; }
 `;
 
 // --- MOCK DATA FALLBACK ---
@@ -129,7 +172,7 @@ export default function DoostApp() {
 
     if (!window.initSqlJs) {
       const script = document.createElement('script');
-      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/sql-wasm.js';
+      script.src = '/sql-wasm.js';
       script.onload = () => setSqlJsReady(true);
       document.head.appendChild(script);
     } else {
@@ -146,7 +189,7 @@ export default function DoostApp() {
     const initDb = async () => {
       try {
         const SQL = await window.initSqlJs({
-          locateFile: file => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/${file}`
+          locateFile: file => `/${file}`
         });
         
         const response = await fetch(import.meta.env.VITE_DB_URL);
