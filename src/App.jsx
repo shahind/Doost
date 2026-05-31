@@ -239,7 +239,7 @@ export default function DoostApp() {
   // 3. Poem View Hooks
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const highlightRef = useRef(null);
-  const [swipeState, setSwipeState] = useState({ offset: 0, isDragging: false });
+  const [swipeState, setSwipeState] = useState({ offset: 0, isDragging: false, isSnapping: false, isAnimating: false });
   const touchStartX = useRef(0);
   const touchCurrentX = useRef(0);
 
@@ -680,6 +680,40 @@ export default function DoostApp() {
 
   const ShareBottomSheet = ({ poem, verses, onClose }) => {
     const [copied, setCopied] = useState(false);
+    const [sheetOffset, setSheetOffset] = useState(0);
+    const [isDragging, setIsDragging] = useState(false);
+    const [isClosing, setIsClosing] = useState(false);
+    const touchStartY = useRef(0);
+
+    const handleTouchStart = (e) => {
+       touchStartY.current = e.touches[0].clientY;
+       setIsDragging(true);
+    };
+
+    const handleTouchMove = (e) => {
+       if (!isDragging) return;
+       const currentY = e.touches[0].clientY;
+       const deltaY = currentY - touchStartY.current;
+       if (deltaY > 0) setSheetOffset(deltaY);
+    };
+
+    const handleTouchEnd = () => {
+       if (!isDragging) return;
+       setIsDragging(false);
+       if (sheetOffset > 100) {
+           setIsClosing(true);
+           setSheetOffset(window.innerHeight);
+           setTimeout(() => onClose(), 300);
+       } else {
+           setSheetOffset(0);
+       }
+    };
+
+    const handleClose = () => {
+        setIsClosing(true);
+        setSheetOffset(window.innerHeight);
+        setTimeout(() => onClose(), 300);
+    };
 
     const cat = queryData('getCat', { id: poem.cat_id });
     const poet = cat ? queryData('getPoet', { id: cat.poet_id }) : null;
@@ -702,9 +736,42 @@ export default function DoostApp() {
     };
 
     return (
-      <div className="fixed inset-0 bg-[#373232]/60 z-[9999] flex flex-col justify-end">
-        <div className="bg-[#FAF4ED] rounded-t-3xl w-full max-w-lg mx-auto p-6 shadow-2xl animate-in slide-in-from-bottom-full duration-300 pb-safe relative">
-          <div className="w-12 h-1.5 bg-[#373232]/20 rounded-full mx-auto mb-6"></div>
+      <div 
+        className={`fixed inset-0 bg-[#373232]/60 z-[9999] flex flex-col justify-end transition-opacity duration-300 ${isClosing ? 'opacity-0' : 'opacity-100'}`}
+        onClick={handleClose}
+      >
+        <div 
+          className="bg-[#FAF4ED] rounded-t-3xl w-full max-w-lg mx-auto p-6 shadow-2xl pb-safe relative"
+          onClick={(e) => e.stopPropagation()}
+          style={{
+             transform: `translateY(${sheetOffset}px)`,
+             transition: isDragging ? 'none' : 'transform 0.3s ease-out',
+             ...(sheetOffset === 0 && !isClosing && !isDragging ? { animation: 'slideInBottomFull 300ms ease-out forwards' } : { animation: 'none' })
+          }}
+        >
+          {/* Extended Drag Handle Area */}
+          <div 
+             className="w-full py-4 -mt-4 mb-2 flex items-center justify-center cursor-grab active:cursor-grabbing relative z-10"
+             onTouchStart={handleTouchStart}
+             onTouchMove={handleTouchMove}
+             onTouchEnd={handleTouchEnd}
+             onMouseDown={(e) => {
+                 touchStartY.current = e.clientY;
+                 setIsDragging(true);
+             }}
+             onMouseMove={(e) => {
+                 if (!isDragging) return;
+                 const deltaY = e.clientY - touchStartY.current;
+                 if (deltaY > 0) setSheetOffset(deltaY);
+             }}
+             onMouseUp={handleTouchEnd}
+             onMouseLeave={() => {
+                 if (isDragging) handleTouchEnd();
+             }}
+          >
+             <div className="w-12 h-1.5 bg-[#373232]/20 rounded-full pointer-events-none"></div>
+          </div>
+          
           <h3 className="text-xl font-bold mb-4 text-[#35646A] border-b border-[#35646A]/10 pb-3">اشتراک‌گذاری شعر</h3>
           
           <div className="bg-white/60 p-4 rounded-2xl text-sm text-[#373232] font-poem whitespace-pre-wrap max-h-[30vh] overflow-y-auto border border-[#35646A]/10 mb-6 shadow-inner hide-scrollbar">
@@ -712,7 +779,7 @@ export default function DoostApp() {
           </div>
 
           <div className="flex gap-3 mb-4">
-            <button onClick={onClose} className="px-4 py-3 text-[#373232] bg-[#373232]/5 rounded-xl active:bg-[#373232]/10 transition-colors w-1/3 font-bold">
+            <button onClick={handleClose} className="px-4 py-3 text-[#373232] bg-[#373232]/5 rounded-xl active:bg-[#373232]/10 transition-colors w-1/3 font-bold">
               بستن
             </button>
             <button onClick={copyToClipboard} className="px-4 py-3 bg-[#35646A] text-[#FAF4ED] rounded-xl active:bg-[#35646A]/80 flex-1 flex justify-center items-center gap-2 transition-colors font-bold shadow-md">
@@ -941,13 +1008,14 @@ export default function DoostApp() {
     const prevPoem = currentIndex > 0 ? poemsInCat[currentIndex - 1] : null;
 
     const handleTouchStart = (e) => {
+        if (swipeState.isAnimating) return;
         touchStartX.current = e.touches[0].clientX;
         touchCurrentX.current = touchStartX.current;
-        setSwipeState({ offset: 0, isDragging: true });
+        setSwipeState({ offset: 0, isDragging: true, isSnapping: false, isAnimating: false });
     };
     
     const handleTouchMove = (e) => {
-        if (!swipeState.isDragging) return;
+        if (!swipeState.isDragging || swipeState.isAnimating) return;
         touchCurrentX.current = e.touches[0].clientX;
         const deltaX = touchCurrentX.current - touchStartX.current;
 
@@ -955,17 +1023,42 @@ export default function DoostApp() {
         if (deltaX > 0 && !nextPoem) return;
         if (deltaX < 0 && !prevPoem) return;
 
-        setSwipeState({ offset: deltaX, isDragging: true });
+        setSwipeState(s => ({ ...s, offset: deltaX, isDragging: true }));
     };
     
     const handleTouchEnd = () => {
+        if (swipeState.isAnimating) return;
         const threshold = window.innerWidth / 3;
+        
         if (swipeState.offset > threshold && nextPoem) {
-            navigateToPoemWithPath(nextPoem.id, nextPoem.title, nextPoem.cat_id, searchTerm);
+            setSwipeState({ offset: window.innerWidth, isDragging: false, isSnapping: false, isAnimating: true });
+            setTimeout(() => {
+                setSwipeState({ offset: 0, isDragging: false, isSnapping: true, isAnimating: false });
+                setViewStack(prev => {
+                    const newStack = [...prev];
+                    newStack[newStack.length - 1] = { 
+                        ...newStack[newStack.length - 1], 
+                        params: { ...newStack[newStack.length - 1].params, id: nextPoem.id, title: nextPoem.title } 
+                    };
+                    return newStack;
+                });
+            }, 300);
         } else if (swipeState.offset < -threshold && prevPoem) {
-            navigateToPoemWithPath(prevPoem.id, prevPoem.title, prevPoem.cat_id, searchTerm);
+            setSwipeState({ offset: -window.innerWidth, isDragging: false, isSnapping: false, isAnimating: true });
+            setTimeout(() => {
+                setSwipeState({ offset: 0, isDragging: false, isSnapping: true, isAnimating: false });
+                setViewStack(prev => {
+                    const newStack = [...prev];
+                    newStack[newStack.length - 1] = { 
+                        ...newStack[newStack.length - 1], 
+                        params: { ...newStack[newStack.length - 1].params, id: prevPoem.id, title: prevPoem.title } 
+                    };
+                    return newStack;
+                });
+            }, 300);
+        } else {
+            setSwipeState({ offset: 0, isDragging: false, isSnapping: false, isAnimating: false });
         }
-        setSwipeState({ offset: 0, isDragging: false });
     };
 
     const toggleFav = () => {
@@ -1140,7 +1233,7 @@ export default function DoostApp() {
                  className="absolute top-0 bottom-0 right-[100%] w-full py-8 px-5 md:px-10 overflow-y-auto view-scroll-container hide-scrollbar z-10 bg-[#FAF4ED]"
                  style={{
                     transform: `translateX(${swipeState.offset}px)`,
-                    transition: swipeState.isDragging ? 'none' : 'transform 0.3s ease-out'
+                    transition: (swipeState.isDragging || swipeState.isSnapping) ? 'none' : 'transform 0.3s ease-out'
                  }}
               >
                   {renderVersesBlock(nextPoem.id, false)}
@@ -1152,7 +1245,7 @@ export default function DoostApp() {
               className="absolute top-0 bottom-0 right-0 w-full py-8 px-5 md:px-10 overflow-y-auto view-scroll-container hide-scrollbar z-20 bg-transparent pb-32"
               style={{
                  transform: `translateX(${swipeState.offset}px)`,
-                 transition: swipeState.isDragging ? 'none' : 'transform 0.3s ease-out'
+                 transition: (swipeState.isDragging || swipeState.isSnapping) ? 'none' : 'transform 0.3s ease-out'
               }}
            >
                {renderVersesBlock(id, true)}
@@ -1164,7 +1257,7 @@ export default function DoostApp() {
                  className="absolute top-0 bottom-0 right-[-100%] w-full py-8 px-5 md:px-10 overflow-y-auto view-scroll-container hide-scrollbar z-10 bg-[#FAF4ED]"
                  style={{
                     transform: `translateX(${swipeState.offset}px)`,
-                    transition: swipeState.isDragging ? 'none' : 'transform 0.3s ease-out'
+                    transition: (swipeState.isDragging || swipeState.isSnapping) ? 'none' : 'transform 0.3s ease-out'
                  }}
               >
                   {renderVersesBlock(prevPoem.id, false)}
