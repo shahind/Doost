@@ -98,9 +98,9 @@ const fontStyles = `
 
   /* Marquee Title Animation */
   @keyframes marqueeRTL {
-    0%, 15% { transform: translateX(0); }
+    0%, 15% { transform: translateX(var(--min-scroll)); }
     45%, 55% { transform: translateX(var(--max-scroll)); }
-    85%, 100% { transform: translateX(0); }
+    85%, 100% { transform: translateX(var(--min-scroll)); }
   }
   .animate-marquee-rtl {
     animation: marqueeRTL linear infinite;
@@ -114,9 +114,9 @@ const fontStyles = `
   @keyframes pulseHighlight {
     0% { background-color: rgba(160, 10, 15, 0.4); }
     50% { background-color: rgba(160, 10, 15, 0.1); }
-    100% { background-color: rgba(160, 10, 15, 0.4); }
+    100% { background-color: rgba(160, 10, 15, 0); }
   }
-  .highlight-pulse { animation: pulseHighlight 2s infinite; }
+  .highlight-pulse { animation: pulseHighlight 2s forwards; }
 
   /* Custom Select Arrow Fix */
   .select-custom-arrow {
@@ -165,14 +165,17 @@ const MarqueeTitle = ({ title }) => {
   const containerRef = useRef(null);
   const textRef = useRef(null);
   const [maxScroll, setMaxScroll] = useState(0);
+  const [minScroll, setMinScroll] = useState(0);
 
   useEffect(() => {
     if (containerRef.current && textRef.current) {
       const overflow = textRef.current.scrollWidth - containerRef.current.clientWidth;
       if (overflow > 0) {
          setMaxScroll(overflow + 30); // 30px padding for breathability
+         setMinScroll(0-(overflow + 30)/2);
       } else {
          setMaxScroll(0);
+         setMinScroll(0);
       }
     }
   }, [title]);
@@ -182,7 +185,7 @@ const MarqueeTitle = ({ title }) => {
       <span
         ref={textRef}
         className={`text-lg font-bold font-poem text-xl whitespace-nowrap inline-block ${maxScroll > 0 ? 'animate-marquee-rtl' : ''}`}
-        style={maxScroll > 0 ? { '--max-scroll': `${maxScroll}px`, animationDuration: `${Math.max(6, maxScroll / 20)}s` } : {}}
+        style={maxScroll > 0 ? { '--max-scroll': `${maxScroll}px`, '--min-scroll': `${minScroll}px`, animationDuration: `${Math.max(10, maxScroll / 20)}s` } : {}}
       >
         {title}
       </span>
@@ -611,8 +614,8 @@ export default function DoostApp() {
 
   // --- NATIVE APP COMPONENTS ---
   const AppBar = ({ title, showBack, rightAction, onBack }) => (
-    <header className="shrink-0 bg-[#35646A] text-[#FAF4ED] shadow-md px-4 py-3 flex items-center justify-between z-40 relative h-[60px]">
-      <div className="w-16 flex justify-start shrink-0">
+    <header className="shrink-0 bg-[#35646A] text-[#FAF4ED] shadow-md px-4 py-3 flex items-center justify-between z-40 relative">
+      <div className="w-16 flex justify-start">
         {showBack && (
           <button onClick={onBack || goBack} className="p-2 -ml-2 rounded-full hover:bg-white/10 active:bg-white/20 transition-colors relative z-50">
             <ChevronRight size={24} />
@@ -627,7 +630,7 @@ export default function DoostApp() {
           <img src="/logo.png" className="max-h-[100px]" alt="Logo" />
         )
       }
-      <div className="w-16 flex justify-end shrink-0">
+      <div className="w-16 flex justify-end">
         {rightAction}
       </div>
     </header>
@@ -1054,7 +1057,7 @@ export default function DoostApp() {
            );
         } else if (v.position === 4) {
            elements.push(
-             <div key={`single-${v.vorder}`} className="w-full text-left pl-4 md:pl-16 text-[#373232] font-poem text-lg md:text-xl lg:text-2xl leading-[2.5] mb-5">
+             <div key={`single-${v.vorder}`} className="w-full text-right pl-4 md:pl-16 text-[#373232] font-poem text-lg md:text-xl lg:text-2xl leading-[2.5] mb-5">
                {renderText(v.text)}
              </div>
            );
@@ -1140,7 +1143,6 @@ export default function DoostApp() {
                     transition: swipeState.isDragging ? 'none' : 'transform 0.3s ease-out'
                  }}
               >
-                  <div className="text-center text-[#35646A]/50 font-bold mb-6 text-sm">{nextPoem.title}</div>
                   {renderVersesBlock(nextPoem.id, false)}
               </div>
            )}
@@ -1165,7 +1167,6 @@ export default function DoostApp() {
                     transition: swipeState.isDragging ? 'none' : 'transform 0.3s ease-out'
                  }}
               >
-                  <div className="text-center text-[#35646A]/50 font-bold mb-6 text-sm">{prevPoem.title}</div>
                   {renderVersesBlock(prevPoem.id, false)}
               </div>
            )}
