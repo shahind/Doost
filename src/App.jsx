@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { 
   Home, Search, Shuffle, Heart, Share2, ChevronRight, ChevronLeft, 
-  BookOpen, Info, Loader2, Copy, Check, Filter, Star, Hash
+  BookOpen, Info, Loader2, Copy, Check, Filter, Star, Hash, MoreVertical
 } from 'lucide-react';
 
 // --- STYLES & FONTS ---
@@ -69,7 +69,7 @@ const fontStyles = `
   .pb-safe { padding-bottom: env(safe-area-inset-bottom, 16px); }
   .pt-safe { padding-top: env(safe-area-inset-top, 0px); }
 
-  .versesbox{
+  .versesbox {
     background-image: url("bg.png");
     background-repeat: repeat;
   }
@@ -95,6 +95,37 @@ const fontStyles = `
   .animate-in.slide-in-from-right-4 { animation: slideInRight 300ms ease-out forwards; }
   .animate-in.slide-in-from-bottom-full { animation: slideInBottomFull 300ms ease-out forwards; }
   .animate-in.slide-in-from-top-2 { animation: slideInTop 300ms ease-out forwards; }
+
+  /* Marquee Title Animation */
+  @keyframes marqueeRTL {
+    0%, 15% { transform: translateX(0); }
+    45%, 55% { transform: translateX(var(--max-scroll)); }
+    85%, 100% { transform: translateX(0); }
+  }
+  .animate-marquee-rtl {
+    animation: marqueeRTL linear infinite;
+  }
+  .mask-image-edges {
+    -webkit-mask-image: linear-gradient(to right, transparent, black 15px, black calc(100% - 15px), transparent);
+    mask-image: linear-gradient(to right, transparent, black 15px, black calc(100% - 15px), transparent);
+  }
+
+  /* Highlight Animation */
+  @keyframes pulseHighlight {
+    0% { background-color: rgba(160, 10, 15, 0.4); }
+    50% { background-color: rgba(160, 10, 15, 0.1); }
+    100% { background-color: rgba(160, 10, 15, 0.4); }
+  }
+  .highlight-pulse { animation: pulseHighlight 2s infinite; }
+
+  /* Custom Select Arrow Fix */
+  .select-custom-arrow {
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2335646A' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: left 1rem center;
+    padding-left: 2.5rem;
+  }
 `;
 
 // --- MOCK DATA FALLBACK ---
@@ -129,6 +160,37 @@ const MOCK_DB = {
   ]
 };
 
+// --- MARQUEE COMPONENT ---
+const MarqueeTitle = ({ title }) => {
+  const containerRef = useRef(null);
+  const textRef = useRef(null);
+  const [maxScroll, setMaxScroll] = useState(0);
+
+  useEffect(() => {
+    if (containerRef.current && textRef.current) {
+      const overflow = textRef.current.scrollWidth - containerRef.current.clientWidth;
+      if (overflow > 0) {
+         setMaxScroll(overflow + 30); // 30px padding for breathability
+      } else {
+         setMaxScroll(0);
+      }
+    }
+  }, [title]);
+
+  return (
+    <div ref={containerRef} className="w-full overflow-hidden relative mx-2 h-full flex items-center justify-center mask-image-edges">
+      <span
+        ref={textRef}
+        className={`text-lg font-bold font-poem text-xl whitespace-nowrap inline-block ${maxScroll > 0 ? 'animate-marquee-rtl' : ''}`}
+        style={maxScroll > 0 ? { '--max-scroll': `${maxScroll}px`, animationDuration: `${Math.max(6, maxScroll / 20)}s` } : {}}
+      >
+        {title}
+      </span>
+    </div>
+  );
+};
+
+
 // --- MAIN APPLICATION COMPONENT ---
 export default function DoostApp() {
   const [appLoading, setAppLoading] = useState(true);
@@ -139,13 +201,9 @@ export default function DoostApp() {
   const [viewStack, setViewStack] = useState([{ name: 'home', params: {} }]);
   const [favorites, setFavorites] = useState(() => JSON.parse(localStorage.getItem('doost_favorites') || '[]'));
   
-  // New state for organizing favorites by poet
   const [favSelectedPoetId, setFavSelectedPoetId] = useState(null);
-
-  // Global share state to escape stacking contexts
   const [shareData, setShareData] = useState(null);
 
-  // Global search state to persist results & filters across navigation
   const [searchState, setSearchState] = useState({
     term: '',
     results: [],
@@ -156,13 +214,54 @@ export default function DoostApp() {
     selectedSection: 'all'
   });
 
-  // Selected Poets State
   const [selectedPoetNames, setSelectedPoetNames] = useState(() => {
     const saved = localStorage.getItem('doost_selected_poets');
     return saved ? JSON.parse(saved) : ['حافظ', 'سعدی', 'فردوسی', 'نظامی', 'مولانا', 'مولوی', 'خیام', 'رودکی', 'عطار'];
   });
   
   const currentView = viewStack[viewStack.length - 1];
+  const viewStackRef = useRef(viewStack);
+
+  // ==========================================
+  // HOISTED VIEW HOOKS (Fix for React Rules of Hooks)
+  // Hooks must be called at top-level, unconditionally!
+  // ==========================================
+  
+  // 1. Home View Hook
+  const homeClickTimer = useRef({});
+  
+  // 2. Search View Hook
+  const [isSearching, setIsSearching] = useState(false);
+
+  // 3. Poem View Hooks
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const highlightRef = useRef(null);
+  const [swipeState, setSwipeState] = useState({ offset: 0, isDragging: false });
+  const touchStartX = useRef(0);
+  const touchCurrentX = useRef(0);
+
+  const activePoemId = currentView.name === 'poem' ? currentView.params.id : null;
+
+  // Auto-scroll logic for highlighted search terms
+  useEffect(() => {
+     if (currentView.name === 'poem' && highlightRef.current) {
+         setTimeout(() => {
+            highlightRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+         }, 300);
+     }
+  }, [activePoemId, currentView.name]);
+
+  // Reset mobile menu on navigation
+  useEffect(() => {
+      setShowMobileMenu(false);
+  }, [currentView.name, activePoemId]);
+
+  // ==========================================
+
+  // Sync ref for back-button listener
+  useEffect(() => {
+    viewStackRef.current = viewStack;
+  }, [viewStack]);
 
   // 1. Inject Styles & Load SQL.js
   useEffect(() => {
@@ -210,6 +309,31 @@ export default function DoostApp() {
     initDb();
   }, [sqlJsReady]);
 
+  // 3. Handle physical/virtual Back Button properly for Capacitor/Cordova apps
+  useEffect(() => {
+    const handleBackButton = (e) => {
+      if (viewStackRef.current.length > 1) {
+        e.preventDefault();
+        setViewStack(prev => prev.slice(0, -1));
+      } else {
+        if (window?.Capacitor?.Plugins?.App) {
+          window.Capacitor.Plugins.App.exitApp();
+        }
+      }
+    };
+
+    let capListener = null;
+    if (window?.Capacitor?.Plugins?.App?.addListener) {
+      window.Capacitor.Plugins.App.addListener('backButton', handleBackButton).then(l => capListener = l);
+    }
+    document.addEventListener('backbutton', handleBackButton, false);
+
+    return () => {
+      if (capListener) capListener.remove();
+      document.removeEventListener('backbutton', handleBackButton, false);
+    };
+  }, []);
+
   // Sync LocalStorage
   useEffect(() => {
     localStorage.setItem('doost_favorites', JSON.stringify(favorites));
@@ -228,7 +352,6 @@ export default function DoostApp() {
   // --- QUERY ABSTRACTION ---
   const queryData = (queryName, params = {}) => {
     if (useMockData) {
-      // Mock Data Implementations
       const getMockDescendants = (rootId) => {
         let ids = [rootId];
         let added = true;
@@ -375,7 +498,6 @@ export default function DoostApp() {
     }
   };
 
-  // Helper to construct fully qualified context for random poems
   const buildContextFromCat = (catId) => {
     let ctx = {};
     let currentCat = queryData('getCat', { id: catId });
@@ -394,7 +516,6 @@ export default function DoostApp() {
     if (poet) {
         ctx.poet_id = poet.id;
         ctx.poet_name = poet.name;
-        // Ignore repetitive root category matching poet's name
         if (catPath.length > 1 && catPath[0].text === poet.name) {
             catPath.shift();
         }
@@ -423,14 +544,13 @@ export default function DoostApp() {
     }
   };
 
-  // Helper to accurately rebuild the full breadcrumb path from scratch
-  const navigateToPoemWithPath = (poemId, poemTitle, catId) => {
-    const currentStack = [...viewStack]; // Snapshot the exact place user is leaving from (e.g. Search results or Favs list)
+  const navigateToPoemWithPath = (poemId, poemTitle, catId, searchTerm = '') => {
+    const currentStack = [...viewStack]; 
     const newStack = [{ name: 'home', params: {} }];
     let currentCat = queryData('getCat', { id: catId });
 
     if (!currentCat) {
-      newStack.push({ name: 'poem', params: { id: poemId, title: poemTitle, ctx: {}, returnStack: currentStack } });
+      newStack.push({ name: 'poem', params: { id: poemId, title: poemTitle, ctx: {}, returnStack: currentStack, searchTerm } });
       setViewStack(newStack);
       return;
     }
@@ -451,19 +571,16 @@ export default function DoostApp() {
         ctx.poet_id = poet.id;
         ctx.poet_name = poet.name;
 
-        // Add poet root to breadcrumb
         newStack.push({
             name: 'category',
             params: { id: poet.cat_id, title: poet.name, isRoot: true, poet_id: poet.id, ctx: { ...ctx } }
         });
 
-        // Avoid duplicating root cat if it matches poet name
         if (catPath.length > 1 && catPath[0].text === poet.name) {
             catPath.shift();
         }
     }
 
-    // Process remaining categories for breadcrumbs
     catPath.forEach((cat, index) => {
         if (index === 0) {
             ctx.book_id = cat.id;
@@ -478,8 +595,7 @@ export default function DoostApp() {
         });
     });
 
-    // Finally add the poem with the history injected
-    newStack.push({ name: 'poem', params: { id: poemId, title: poemTitle, ctx, returnStack: currentStack } });
+    newStack.push({ name: 'poem', params: { id: poemId, title: poemTitle, ctx, returnStack: currentStack, searchTerm } });
 
     setViewStack(newStack);
     if (currentView.name !== 'favorites') setFavSelectedPoetId(null);
@@ -495,21 +611,23 @@ export default function DoostApp() {
 
   // --- NATIVE APP COMPONENTS ---
   const AppBar = ({ title, showBack, rightAction, onBack }) => (
-    <header className="shrink-0 bg-[#35646A] text-[#FAF4ED] shadow-md px-4 py-3 flex items-center justify-between z-40 relative">
-      <div className="w-16 flex justify-start">
+    <header className="shrink-0 bg-[#35646A] text-[#FAF4ED] shadow-md px-4 py-3 flex items-center justify-between z-40 relative h-[60px]">
+      <div className="w-16 flex justify-start shrink-0">
         {showBack && (
-          <button onClick={onBack || goBack} className="p-2 -ml-2 rounded-full hover:bg-white/10 active:bg-white/20 transition-colors">
+          <button onClick={onBack || goBack} className="p-2 -ml-2 rounded-full hover:bg-white/10 active:bg-white/20 transition-colors relative z-50">
             <ChevronRight size={24} />
           </button>
         )}
       </div>
-      {title? (
-          <h1 className="text-lg font-bold truncate flex-1 text-center font-poem text-xl">{title}</h1>
-        ):(
-          <img src="/logo.png" class="max-h-[100px]"></img>
+      {title ? (
+          <div className="flex-1 overflow-hidden h-full flex items-center justify-center pointer-events-none">
+             <MarqueeTitle title={title} />
+          </div>
+        ) : (
+          <img src="/logo.png" className="max-h-[100px]" alt="Logo" />
         )
       }
-      <div className="w-16 flex justify-end">
+      <div className="w-16 flex justify-end shrink-0">
         {rightAction}
       </div>
     </header>
@@ -609,10 +727,8 @@ export default function DoostApp() {
   const renderHomeView = () => {
     const poets = queryData('getPoets');
     
-    // Selected poets for top section
     const selectedPoets = poets.filter(p => selectedPoetNames.includes(p.name));
     
-    // All poets (sorted alphabetically) for the bottom section
     const groupedPoets = {};
     const sortedAllPoets = [...poets].sort((a, b) => a.name.localeCompare(b.name, 'fa'));
     sortedAllPoets.forEach(p => {
@@ -632,26 +748,34 @@ export default function DoostApp() {
       return styles[id % styles.length];
     };
 
+    const handlePoetCardClick = (e, poet) => {
+      if (e.detail === 1) {
+         homeClickTimer.current[poet.id] = setTimeout(() => {
+            navigate('category', { 
+              id: poet.cat_id, 
+              title: poet.name, 
+              isRoot: true, 
+              poet_id: poet.id,
+              ctx: { poet_id: poet.id, poet_name: poet.name }
+            });
+         }, 250);
+      } else if (e.detail === 2) {
+         clearTimeout(homeClickTimer.current[poet.id]);
+         toggleSelectedPoet(poet.name);
+      }
+    };
+
     const renderPoetCard = (poet) => {
       const isSelected = selectedPoetNames.includes(poet.name);
       const tint = getPoetStyle(poet.id);
       return (
         <button 
           key={poet.id}
-          onClick={() => navigate('category', { 
-            id: poet.cat_id, 
-            title: poet.name, 
-            isRoot: true, 
-            poet_id: poet.id,
-            ctx: { poet_id: poet.id, poet_name: poet.name }
-          })}
-          className={`w-full flex flex-row sm:flex-col items-center sm:justify-center border rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-sm active:scale-[0.98] transition-all h-[72px] sm:h-auto sm:aspect-square relative group ${tint}`}
+          onClick={(e) => handlePoetCardClick(e, poet)}
+          className={`w-full flex flex-row sm:flex-col items-center sm:justify-center border rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-sm active:scale-[0.98] transition-all h-[72px] sm:h-auto sm:aspect-square relative group select-none ${tint}`}
         >
           <span className="font-bold text-lg sm:text-xl tracking-wide ml-auto sm:ml-0">{poet.name}</span>
-          <div 
-            onClick={(e) => { e.stopPropagation(); toggleSelectedPoet(poet.name); }}
-            className="mr-auto sm:mr-0 sm:mt-auto sm:absolute sm:top-4 sm:right-4 p-2 -m-2 sm:m-0 rounded-full active:bg-black/5 transition-colors"
-          >
+          <div className="mr-auto sm:mr-0 sm:mt-auto sm:absolute sm:top-4 sm:right-4 p-2 -m-2 sm:m-0 rounded-full">
              <Star size={20} className={isSelected ? "fill-[#A00A0F] text-[#A00A0F]" : "text-[#35646A]/20"} />
           </div>
         </button>
@@ -664,7 +788,6 @@ export default function DoostApp() {
         
         <div className="p-4 md:p-6 max-w-4xl mx-auto">
           
-          {/* Selected Poets */}
           {selectedPoets.length > 0 && (
             <div className="mb-8">
               <h2 className="text-lg font-bold text-[#35646A] flex items-center gap-2 mb-4">
@@ -677,7 +800,6 @@ export default function DoostApp() {
             </div>
           )}
           
-          {/* All Poets (Alphabetical) */}
           <div className="mb-8">
             <h2 className="text-lg font-bold text-[#35646A] flex items-center gap-2 mb-4">
                <Hash size={20} className="text-[#35646A]" />
@@ -695,7 +817,6 @@ export default function DoostApp() {
             ))}
           </div>
 
-          {/* Floating Random Action Button */}
           <button 
             onClick={() => {
               const p = queryData('getRandomPoem');
@@ -723,7 +844,7 @@ export default function DoostApp() {
             title={title} 
             showBack={true} 
             rightAction={
-              <div className="flex gap-1">
+              <div className="flex gap-1 relative z-50">
                  <button onClick={() => {
                    setSearchState(prev => ({
                       ...prev,
@@ -807,10 +928,42 @@ export default function DoostApp() {
     );
   };
 
-  const renderPoemView = ({ id, title, ctx, returnStack }) => {
-    const verses = queryData('getVerses', { poem_id: id });
+  const renderPoemView = ({ id, title, ctx, returnStack, searchTerm }) => {
     const poemObj = queryData('getPoem', { id });
     const isFav = favorites.some(f => f.id === id);
+    
+    const poemsInCat = queryData('getPoemsByCat', { cat_id: poemObj?.cat_id });
+    const currentIndex = poemsInCat.findIndex(p => p.id === id);
+    const nextPoem = currentIndex >= 0 && currentIndex < poemsInCat.length - 1 ? poemsInCat[currentIndex + 1] : null;
+    const prevPoem = currentIndex > 0 ? poemsInCat[currentIndex - 1] : null;
+
+    const handleTouchStart = (e) => {
+        touchStartX.current = e.touches[0].clientX;
+        touchCurrentX.current = touchStartX.current;
+        setSwipeState({ offset: 0, isDragging: true });
+    };
+    
+    const handleTouchMove = (e) => {
+        if (!swipeState.isDragging) return;
+        touchCurrentX.current = e.touches[0].clientX;
+        const deltaX = touchCurrentX.current - touchStartX.current;
+
+        // Prevent dragging to directions without content
+        if (deltaX > 0 && !nextPoem) return;
+        if (deltaX < 0 && !prevPoem) return;
+
+        setSwipeState({ offset: deltaX, isDragging: true });
+    };
+    
+    const handleTouchEnd = () => {
+        const threshold = window.innerWidth / 3;
+        if (swipeState.offset > threshold && nextPoem) {
+            navigateToPoemWithPath(nextPoem.id, nextPoem.title, nextPoem.cat_id, searchTerm);
+        } else if (swipeState.offset < -threshold && prevPoem) {
+            navigateToPoemWithPath(prevPoem.id, prevPoem.title, prevPoem.cat_id, searchTerm);
+        }
+        setSwipeState({ offset: 0, isDragging: false });
+    };
 
     const toggleFav = () => {
       if (isFav) {
@@ -829,24 +982,62 @@ export default function DoostApp() {
       }
     };
 
-    const renderVerses = () => {
+    const handleSearchInCat = () => {
+       setSearchState(prev => ({
+          ...prev,
+          selectedPoet: ctx?.poet_id || 'all',
+          selectedBook: ctx?.book_id || 'all',
+          selectedSection: ctx?.section_id || 'all',
+          showFilters: true
+       }));
+       navigate('search');
+    };
+
+    const sharePoemCurrent = () => {
+       setShareData({ poem: poemObj, verses: queryData('getVerses', { poem_id: id }) });
+    };
+
+    const renderVersesBlock = (poemId, isHighlighted) => {
+      if (!poemId) return null;
+      const verses = queryData('getVerses', { poem_id: poemId });
       const elements = [];
       let i = 0;
+      let firstHighlightSet = false;
+
+      const renderText = (text) => {
+         if (!searchTerm) return text;
+         const parts = text.split(new RegExp(`(${searchTerm})`, 'gi'));
+         return parts.map((part, idx) => {
+            if (part.toLowerCase() === searchTerm.toLowerCase()) {
+               const isFirst = !firstHighlightSet && isHighlighted;
+               if (isFirst) firstHighlightSet = true;
+               return (
+                 <span
+                   key={idx}
+                   ref={isFirst ? highlightRef : null}
+                   className="bg-[#A00A0F]/20 text-[#A00A0F] highlight-phrase rounded px-1 transition-all duration-1000 highlight-pulse inline-block"
+                 >
+                   {part}
+                 </span>
+               );
+            }
+            return part;
+         });
+      };
       
       while (i < verses.length) {
         const v = verses[i];
         
-        // Classic Pair (0 = Right, 1 = Left) - Staggered in ONE line dynamically
         if (v.position === 0) {
           const nextV = verses[i + 1];
           if (nextV && nextV.position === 1) {
             elements.push(
               <div key={`pair-${v.vorder}`} className="w-full mb-6 group flex flex-col gap-1">
                 <div className="w-full text-right text-[#373232] font-poem text-lg md:text-xl lg:text-2xl leading-[2.5] pl-4 md:pl-16">
-                  {v.text}
+                  {renderText(v.text)}
                 </div>
                 <div className="w-full text-left text-[#373232] font-poem text-lg md:text-xl lg:text-2xl leading-[2.5] pr-4 md:pr-16">
-                  {nextV.text}
+                  {renderText(nextV.text)}
                 </div>
               </div>
             );
@@ -855,65 +1046,129 @@ export default function DoostApp() {
           }
         }
         
-        // Single Center Lines
-        if ([2, 3, 4].includes(v.position) || (v.position === 0)) {
+        if ([2, 3].includes(v.position) || (v.position === 0)) {
            elements.push(
              <div key={`single-${v.vorder}`} className="w-full text-center text-[#373232] font-poem text-lg md:text-xl lg:text-2xl leading-[2.5] mb-5">
-               {v.text}
+               {renderText(v.text)}
              </div>
            );
-        }
-        // Prose/Comment - Removed green box completely, just text style
-        else if (v.position === 5 || v.position === -1) {
+        } else if (v.position === 4) {
+           elements.push(
+             <div key={`single-${v.vorder}`} className="w-full text-left pl-4 md:pl-16 text-[#373232] font-poem text-lg md:text-xl lg:text-2xl leading-[2.5] mb-5">
+               {renderText(v.text)}
+             </div>
+           );
+        } else if (v.position === 5 || v.position === -1) {
            elements.push(
              <div key={`prose-${v.vorder}`} className="w-full text-justify text-[#373232]/80 leading-relaxed mb-6 text-sm md:text-base font-semibold">
-               {v.text}
+               {renderText(v.text)}
              </div>
            );
         }
         i++;
       }
-      return elements;
+      return <div className="max-w-3xl mx-auto">{elements}</div>;
     };
 
     return (
-      <div className="flex flex-col h-full versesbox animate-in fade-in duration-300 bg-[#FAF4ED]">
+      <div className="flex flex-col h-full bg-[#FAF4ED] animate-in fade-in duration-300">
         <div className="shrink-0 z-40 relative">
           <AppBar 
             title={title} 
             showBack={true} 
             onBack={returnStack ? () => setViewStack(returnStack) : undefined}
             rightAction={
-              <div className="flex gap-1">
-                <button onClick={() => {
-                   setSearchState(prev => ({
-                      ...prev,
-                      selectedPoet: ctx?.poet_id || 'all',
-                      selectedBook: ctx?.book_id || 'all',
-                      selectedSection: ctx?.section_id || 'all',
-                      showFilters: true
-                   }));
-                   navigate('search');
-                }} className="p-2 rounded-full active:bg-white/20 transition-colors">
-                  <Search size={20} />
-                </button>
-                <button onClick={toggleFav} className="p-2 rounded-full active:bg-white/20 transition-colors">
-                  <Heart size={20} className={isFav ? "fill-white text-white" : ""} />
-                </button>
-                <button onClick={() => setShareData({ poem: poemObj, verses })} className="p-2 -mr-1 rounded-full active:bg-white/20 transition-colors">
-                  <Share2 size={20} />
-                </button>
+              <div className="flex items-center gap-1 relative z-50">
+                {/* Desktop Buttons */}
+                <div className="hidden md:flex gap-1">
+                   <button onClick={handleSearchInCat} className="p-2 rounded-full active:bg-white/20 transition-colors">
+                     <Search size={20} />
+                   </button>
+                   <button onClick={toggleFav} className="p-2 rounded-full active:bg-white/20 transition-colors">
+                     <Heart size={20} className={isFav ? "fill-white text-white" : ""} />
+                   </button>
+                   <button onClick={sharePoemCurrent} className="p-2 -mr-1 rounded-full active:bg-white/20 transition-colors">
+                     <Share2 size={20} />
+                   </button>
+                </div>
+                
+                {/* Mobile Dropdown */}
+                <div className="flex md:hidden">
+                   <button onClick={() => setShowMobileMenu(!showMobileMenu)} className="p-2 -mr-1 rounded-full active:bg-white/20 transition-colors relative z-50">
+                      <MoreVertical size={20} />
+                   </button>
+                   
+                   {showMobileMenu && (
+                     <>
+                       <div className="fixed inset-0 z-[100]" onClick={() => setShowMobileMenu(false)}></div>
+                       <div className="absolute top-12 left-0 w-56 bg-white rounded-2xl shadow-xl border border-[#35646A]/10 py-2 z-[101] animate-in fade-in slide-in-from-top-2">
+                          <button onClick={() => { toggleFav(); setShowMobileMenu(false); }} className="w-full text-right px-4 py-3 active:bg-gray-100 flex items-center gap-3 text-sm text-[#373232] font-bold border-b border-gray-100 transition-colors">
+                             <Heart size={18} className={isFav ? "fill-[#A00A0F] text-[#A00A0F]" : "text-[#35646A]/70"} />
+                             {isFav ? 'حذف از علاقه‌مندی‌ها' : 'افزودن به علاقه‌مندی‌ها'}
+                          </button>
+                          <button onClick={() => { handleSearchInCat(); setShowMobileMenu(false); }} className="w-full text-right px-4 py-3 active:bg-gray-100 flex items-center gap-3 text-sm text-[#373232] font-bold border-b border-gray-100 transition-colors">
+                             <Search size={18} className="text-[#35646A]/70" /> جستجو در این بخش
+                          </button>
+                          <button onClick={() => { sharePoemCurrent(); setShowMobileMenu(false); }} className="w-full text-right px-4 py-3 active:bg-gray-100 flex items-center gap-3 text-sm text-[#373232] font-bold transition-colors">
+                             <Share2 size={18} className="text-[#35646A]/70" /> به اشتراک گذاری
+                          </button>
+                       </div>
+                     </>
+                   )}
+                </div>
               </div>
             }
           />
           <Breadcrumbs />
         </div>
 
-        <div className="flex-1 overflow-y-auto view-scroll-container pb-24 relative">
-          <div className="persian-pattern absolute inset-0 z-[-1]"></div>
-          <div className="max-w-3xl mx-auto py-8 px-5 md:px-10 relative">
-            {renderVerses()}
-          </div>
+        {/* Swipe Container Area */}
+        <div 
+           className="flex-1 relative overflow-hidden bg-[#FAF4ED] versesbox"
+           onTouchStart={handleTouchStart}
+           onTouchMove={handleTouchMove}
+           onTouchEnd={handleTouchEnd}
+        >
+           <div className="persian-pattern absolute inset-0 z-[0] pointer-events-none"></div>
+
+           {/* Next Poem Layer (Revealed when swiping right. RTL Right: 100% means visual Left) */}
+           {nextPoem && (
+              <div 
+                 className="absolute top-0 bottom-0 right-[100%] w-full py-8 px-5 md:px-10 overflow-y-auto view-scroll-container hide-scrollbar z-10 bg-[#FAF4ED]"
+                 style={{
+                    transform: `translateX(${swipeState.offset}px)`,
+                    transition: swipeState.isDragging ? 'none' : 'transform 0.3s ease-out'
+                 }}
+              >
+                  <div className="text-center text-[#35646A]/50 font-bold mb-6 text-sm">{nextPoem.title}</div>
+                  {renderVersesBlock(nextPoem.id, false)}
+              </div>
+           )}
+
+           {/* Current Poem Layer */}
+           <div 
+              className="absolute top-0 bottom-0 right-0 w-full py-8 px-5 md:px-10 overflow-y-auto view-scroll-container hide-scrollbar z-20 bg-transparent pb-32"
+              style={{
+                 transform: `translateX(${swipeState.offset}px)`,
+                 transition: swipeState.isDragging ? 'none' : 'transform 0.3s ease-out'
+              }}
+           >
+               {renderVersesBlock(id, true)}
+           </div>
+
+           {/* Previous Poem Layer (Revealed when swiping left. RTL Right: -100% means visual Right) */}
+           {prevPoem && (
+              <div 
+                 className="absolute top-0 bottom-0 right-[-100%] w-full py-8 px-5 md:px-10 overflow-y-auto view-scroll-container hide-scrollbar z-10 bg-[#FAF4ED]"
+                 style={{
+                    transform: `translateX(${swipeState.offset}px)`,
+                    transition: swipeState.isDragging ? 'none' : 'transform 0.3s ease-out'
+                 }}
+              >
+                  <div className="text-center text-[#35646A]/50 font-bold mb-6 text-sm">{prevPoem.title}</div>
+                  {renderVersesBlock(prevPoem.id, false)}
+              </div>
+           )}
         </div>
       </div>
     );
@@ -923,12 +1178,10 @@ export default function DoostApp() {
     const { term, results, hasSearched, showFilters, selectedPoet, selectedBook, selectedSection } = searchState;
     const updateSearch = (updates) => setSearchState(prev => ({ ...prev, ...updates }));
 
-    // Filter Data
     const poets = queryData('getPoets');
     const books = selectedPoet !== 'all' ? queryData('getCatsByParent', { poet_id: selectedPoet }) : [];
     const sections = selectedBook !== 'all' ? queryData('getCatsByParent', { parent_id: selectedBook }) : [];
 
-    // Handlers
     const handlePoetChange = (e) => {
       updateSearch({
           selectedPoet: e.target.value === 'all' ? 'all' : Number(e.target.value),
@@ -946,37 +1199,42 @@ export default function DoostApp() {
 
     const handleSearch = (e) => {
       e.preventDefault();
-      if (!term.trim()) return;
+      if (!term.trim() || isSearching) return;
       
-      const targetCat = selectedSection !== 'all' ? selectedSection : (selectedBook !== 'all' ? selectedBook : 'all');
-      const res = queryData('search', { 
-         term: term.trim(), 
-         poet_id: selectedPoet, 
-         cat_id: targetCat 
-      });
+      setIsSearching(true);
       
-      updateSearch({ results: res, hasSearched: true, showFilters: false });
-      document.activeElement.blur();
+      // Delay to ensure the loading state displays during sync SQL fetch
+      setTimeout(() => {
+         const targetCat = selectedSection !== 'all' ? selectedSection : (selectedBook !== 'all' ? selectedBook : 'all');
+         const res = queryData('search', { 
+            term: term.trim(), 
+            poet_id: selectedPoet, 
+            cat_id: targetCat 
+         });
+         
+         updateSearch({ results: res, hasSearched: true, showFilters: false });
+         document.activeElement.blur();
+         setIsSearching(false);
+      }, 50);
     };
 
     return (
       <div className="flex flex-col h-full versesbox animate-in fade-in duration-300 bg-[#FAF4ED]">
         <div className="shrink-0 z-40 relative bg-[#FAF4ED] shadow-sm pb-4 rounded-b-3xl border-b border-[#35646A]/10">
           <AppBar title="جستجوی پیشرفته" showBack={false} rightAction={
-             <button onClick={() => updateSearch({ showFilters: !showFilters })} className={`p-2 rounded-full transition-colors ${showFilters ? 'bg-white/20' : 'active:bg-white/20'}`}>
+             <button onClick={() => updateSearch({ showFilters: !showFilters })} className={`p-2 rounded-full transition-colors relative z-50 ${showFilters ? 'bg-white/20' : 'active:bg-white/20'}`}>
                 <Filter size={20} />
              </button>
           }/>
           
           <div className="px-4 md:px-6 max-w-3xl mx-auto mt-4">
-            {/* Advanced Filters Panel */}
             {showFilters && (
               <div className="bg-white p-5 rounded-3xl border border-[#35646A]/10 shadow-sm mb-4 animate-in slide-in-from-top-2">
                  <h3 className="text-[#35646A] font-bold mb-4 text-sm flex items-center gap-2"><Filter size={16}/> فیلترهای جستجو</h3>
                  <div className="space-y-3">
                     <div>
                       <label className="text-xs text-[#373232]/70 font-bold mb-1 block">شاعر</label>
-                      <select value={selectedPoet} onChange={handlePoetChange} className="w-full bg-[#FAF4ED] border border-[#35646A]/20 rounded-xl p-3 text-sm font-semibold text-[#373232] outline-none focus:border-[#35646A]">
+                      <select value={selectedPoet} onChange={handlePoetChange} className="w-full bg-[#FAF4ED] border border-[#35646A]/20 rounded-xl p-3 select-custom-arrow text-sm font-semibold text-[#373232] outline-none focus:border-[#35646A]">
                          <option value="all">همه موارد</option>
                          {poets.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                       </select>
@@ -985,7 +1243,7 @@ export default function DoostApp() {
                     {selectedPoet !== 'all' && books.length > 0 && (
                       <div>
                         <label className="text-xs text-[#373232]/70 font-bold mb-1 block">کتاب / بخش اصلی</label>
-                        <select value={selectedBook} onChange={handleBookChange} className="w-full bg-[#FAF4ED] border border-[#35646A]/20 rounded-xl p-3 text-sm font-semibold text-[#373232] outline-none focus:border-[#35646A]">
+                        <select value={selectedBook} onChange={handleBookChange} className="w-full bg-[#FAF4ED] border border-[#35646A]/20 rounded-xl p-3 select-custom-arrow text-sm font-semibold text-[#373232] outline-none focus:border-[#35646A]">
                            <option value="all">همه موارد</option>
                            {books.map(b => <option key={b.id} value={b.id}>{b.text}</option>)}
                         </select>
@@ -995,7 +1253,7 @@ export default function DoostApp() {
                     {selectedBook !== 'all' && sections.length > 0 && (
                       <div>
                         <label className="text-xs text-[#373232]/70 font-bold mb-1 block">بخش فرعی</label>
-                        <select value={selectedSection} onChange={e => updateSearch({ selectedSection: e.target.value === 'all' ? 'all' : Number(e.target.value) })} className="w-full bg-[#FAF4ED] border border-[#35646A]/20 rounded-xl p-3 text-sm font-semibold text-[#373232] outline-none focus:border-[#35646A]">
+                        <select value={selectedSection} onChange={e => updateSearch({ selectedSection: e.target.value === 'all' ? 'all' : Number(e.target.value) })} className="w-full bg-[#FAF4ED] border border-[#35646A]/20 rounded-xl p-3 select-custom-arrow text-sm font-semibold text-[#373232] outline-none focus:border-[#35646A]">
                            <option value="all">همه موارد</option>
                            {sections.map(s => <option key={s.id} value={s.id}>{s.text}</option>)}
                         </select>
@@ -1005,7 +1263,7 @@ export default function DoostApp() {
               </div>
             )}
 
-            <form onSubmit={handleSearch} className="flex gap-2">
+            <form onSubmit={handleSearch} className="flex gap-2 relative z-10">
               <div className="relative flex-1">
                 <input 
                   type="text" 
@@ -1016,15 +1274,15 @@ export default function DoostApp() {
                 />
                 <Search className="absolute right-4 top-4 text-[#35646A]/50" size={24} />
               </div>
-              <button type="submit" className="bg-[#35646A] text-[#FAF4ED] px-6 rounded-2xl active:bg-[#35646A]/80 font-bold transition-colors shadow-md">
-                بگرد
+              <button disabled={isSearching} type="submit" className="bg-[#35646A] text-[#FAF4ED] px-6 rounded-2xl active:bg-[#35646A]/80 font-bold transition-colors shadow-md min-w-[80px] flex items-center justify-center">
+                {isSearching ? <Loader2 className="animate-spin text-white" size={20} /> : 'بگرد'}
               </button>
             </form>
           </div>
         </div>
 
         <div className="flex-1 overflow-y-auto view-scroll-container p-4 md:p-6 pb-24">
-          <div className="max-w-3xl mx-auto space-y-4">
+          <div className="max-w-3xl mx-auto space-y-4 pb-12">
             {hasSearched && (
               <>
                 <h3 className="text-sm font-bold text-[#35646A]/70 px-2 flex justify-between">
@@ -1038,7 +1296,7 @@ export default function DoostApp() {
                   {results.map((res, i) => (
                     <button 
                       key={i} 
-                      onClick={() => navigateToPoemWithPath(res.poem_id, res.poem_title, res.cat_id)}
+                      onClick={() => navigateToPoemWithPath(res.poem_id, res.poem_title, res.cat_id, term)}
                       className="w-full text-right bg-white p-5 rounded-3xl border border-[#35646A]/10 shadow-sm active:scale-[0.98] transition-all"
                     >
                       <p className="font-poem text-lg md:text-xl text-[#373232] mb-4 leading-[2]">
@@ -1062,6 +1320,8 @@ export default function DoostApp() {
                 </div>
               </>
             )}
+            {/* Added spacer to ensure elements scroll cleanly past bottom nav */}
+            <div className="h-16 shrink-0 w-full"></div>
           </div>
         </div>
       </div>
@@ -1069,10 +1329,8 @@ export default function DoostApp() {
   };
 
   const renderFavoritesView = () => {
-    // Group favorites by poet dynamically
     const grouped = {};
     favorites.forEach(fav => {
-       // Fallback for older saved favorites before update
        let pId = fav.poet_id;
        let pName = fav.poet_name;
        let bName = fav.book_name;
@@ -1095,7 +1353,6 @@ export default function DoostApp() {
 
     const poetsList = Object.keys(grouped).map(k => ({ id: k, ...grouped[k] }));
 
-    // Selected Poet's Poems View
     if (favSelectedPoetId && grouped[favSelectedPoetId]) {
        const selectedGroup = grouped[favSelectedPoetId];
        return (
@@ -1133,7 +1390,6 @@ export default function DoostApp() {
        );
     }
 
-    // Default Poets List View
     return (
       <div className="flex flex-col h-full versesbox animate-in fade-in duration-300 bg-[#FAF4ED]">
         <div className="shrink-0 z-40 relative">
@@ -1182,7 +1438,7 @@ export default function DoostApp() {
         <div className="absolute inset-0 persian-pattern opacity-10 mix-blend-overlay"></div>
         <div className="relative z-10 flex flex-col items-center">
           <div className="w-48 h-48 bg-[rgb(250 244 237 / 43%)] rounded-3xl shadow-2xl flex items-center justify-center mb-8 rotate-3">
-            <img src="/logo.png"></img>
+            <img src="/logo.png" alt="Logo" />
           </div>
           <p className="text-[#FAF4ED]/70 font-medium mb-12">گنجینه شعر و ادب پارسی</p>
           <Loader2 className="animate-spin text-[#FAF4ED]/50" size={32} />
@@ -1204,7 +1460,6 @@ export default function DoostApp() {
       
       <BottomNav />
       
-      {/* Moved ShareBottomSheet to Root to escape any local z-index stacking contexts */}
       {shareData && <ShareBottomSheet poem={shareData.poem} verses={shareData.verses} onClose={() => setShareData(null)} />}
     </div>
   );
