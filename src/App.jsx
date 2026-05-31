@@ -96,6 +96,9 @@ export default function DoostApp() {
   const [viewStack, setViewStack] = useState([{ name: 'home', params: {} }]);
   const [favorites, setFavorites] = useState(() => JSON.parse(localStorage.getItem('doost_favorites') || '[]'));
   
+  // New state for organizing favorites by poet
+  const [favSelectedPoetId, setFavSelectedPoetId] = useState(null);
+
   // Global share state to escape stacking contexts
   const [shareData, setShareData] = useState(null);
 
@@ -172,6 +175,12 @@ export default function DoostApp() {
   useEffect(() => {
     localStorage.setItem('doost_selected_poets', JSON.stringify(selectedPoetNames));
   }, [selectedPoetNames]);
+
+  // Scroll to top of individual views on navigation
+  useEffect(() => {
+    const scrollable = document.querySelector('.view-scroll-container');
+    if (scrollable) scrollable.scrollTop = 0;
+  }, [viewStack, favSelectedPoetId]);
 
   // --- QUERY ABSTRACTION ---
   const queryData = (queryName, params = {}) => {
@@ -286,7 +295,7 @@ export default function DoostApp() {
         }
 
         return execSql(cte + `
-            SELECT v.text, p.title as poem_title, p.id as poem_id, c.text as cat_name, pt.name as poet_name 
+            SELECT v.text, p.title as poem_title, p.id as poem_id, c.text as cat_name, pt.name as poet_name, c.id as cat_id
             FROM verse v 
             JOIN poem p ON v.poem_id = p.id 
             JOIN cat c ON p.cat_id = c.id 
@@ -362,13 +371,75 @@ export default function DoostApp() {
   // --- APP NAVIGATION ---
   const navigate = (name, params = {}) => {
     setViewStack([...viewStack, { name, params }]);
-    window.scrollTo(0, 0);
+    if (name !== 'favorites') setFavSelectedPoetId(null);
   };
 
   const goBack = () => {
     if (viewStack.length > 1) {
       setViewStack(viewStack.slice(0, -1));
     }
+  };
+
+  // Helper to accurately rebuild the full breadcrumb path from scratch
+  const navigateToPoemWithPath = (poemId, poemTitle, catId) => {
+    const currentStack = [...viewStack]; // Snapshot the exact place user is leaving from (e.g. Search results or Favs list)
+    const newStack = [{ name: 'home', params: {} }];
+    let currentCat = queryData('getCat', { id: catId });
+
+    if (!currentCat) {
+      newStack.push({ name: 'poem', params: { id: poemId, title: poemTitle, ctx: {}, returnStack: currentStack } });
+      setViewStack(newStack);
+      return;
+    }
+
+    let catPath = [currentCat];
+    let safety = 0;
+    while (currentCat.parent_id !== 0 && safety < 10) {
+        currentCat = queryData('getCat', { id: currentCat.parent_id });
+        if (currentCat) catPath.unshift(currentCat);
+        else break;
+        safety++;
+    }
+
+    let poet = queryData('getPoet', { id: catPath[0].poet_id });
+    let ctx = {};
+
+    if (poet) {
+        ctx.poet_id = poet.id;
+        ctx.poet_name = poet.name;
+
+        // Add poet root to breadcrumb
+        newStack.push({
+            name: 'category',
+            params: { id: poet.cat_id, title: poet.name, isRoot: true, poet_id: poet.id, ctx: { ...ctx } }
+        });
+
+        // Avoid duplicating root cat if it matches poet name
+        if (catPath.length > 1 && catPath[0].text === poet.name) {
+            catPath.shift();
+        }
+    }
+
+    // Process remaining categories for breadcrumbs
+    catPath.forEach((cat, index) => {
+        if (index === 0) {
+            ctx.book_id = cat.id;
+            ctx.book_name = cat.text;
+        } else if (index === catPath.length - 1) {
+            ctx.section_id = cat.id;
+            ctx.section_name = cat.text;
+        }
+        newStack.push({
+            name: 'category',
+            params: { id: cat.id, title: cat.text, isRoot: false, ctx: { ...ctx } }
+        });
+    });
+
+    // Finally add the poem with the history injected
+    newStack.push({ name: 'poem', params: { id: poemId, title: poemTitle, ctx, returnStack: currentStack } });
+
+    setViewStack(newStack);
+    if (currentView.name !== 'favorites') setFavSelectedPoetId(null);
   };
 
   const toggleSelectedPoet = (name) => {
@@ -380,11 +451,11 @@ export default function DoostApp() {
   };
 
   // --- NATIVE APP COMPONENTS ---
-  const AppBar = ({ title, showBack, rightAction }) => (
-    <header className="sticky top-0 z-40 bg-[#35646A] text-[#FAF4ED] shadow-md px-4 py-3 flex items-center justify-between">
+  const AppBar = ({ title, showBack, rightAction, onBack }) => (
+    <header className="shrink-0 bg-[#35646A] text-[#FAF4ED] shadow-md px-4 py-3 flex items-center justify-between z-40 relative">
       <div className="w-16 flex justify-start">
         {showBack && (
-          <button onClick={goBack} className="p-2 -ml-2 rounded-full hover:bg-white/10 active:bg-white/20 transition-colors">
+          <button onClick={onBack || goBack} className="p-2 -ml-2 rounded-full hover:bg-white/10 active:bg-white/20 transition-colors">
             <ChevronRight size={24} />
           </button>
         )}
@@ -392,7 +463,7 @@ export default function DoostApp() {
       {title? (
           <h1 className="text-lg font-bold truncate flex-1 text-center font-poem text-xl">{title}</h1>
         ):(
-          <img src="logo.png" class="max-h-[100px]"></img>
+          <img src="/logo.png" class="max-h-[100px]"></img>
         )
       }
       <div className="w-16 flex justify-end">
@@ -404,7 +475,7 @@ export default function DoostApp() {
   const Breadcrumbs = () => {
     if (viewStack.length <= 1) return null;
     return (
-      <div className="flex items-center gap-1.5 px-4 py-2.5 bg-white/80 border-b border-[#35646A]/10 overflow-x-auto hide-scrollbar whitespace-nowrap text-[11px] sm:text-xs text-[#35646A] font-bold shadow-sm backdrop-blur-md sticky top-[60px] md:top-[68px] z-30">
+      <div className="shrink-0 flex items-center gap-1.5 px-4 py-2.5 bg-white/80 border-b border-[#35646A]/10 overflow-x-auto hide-scrollbar whitespace-nowrap text-[11px] sm:text-xs text-[#35646A] font-bold shadow-sm backdrop-blur-md relative z-30">
         {viewStack.map((view, idx) => {
           let title = view.name === 'home' ? 'خانه' :
                       view.name === 'search' ? 'جستجو' :
@@ -428,7 +499,7 @@ export default function DoostApp() {
 
   const BottomNav = () => (
     <nav className="fixed bottom-0 w-full bg-[#FAF4ED]/95 backdrop-blur-md border-t border-[#35646A]/10 px-6 py-2 pb-safe flex justify-between items-center z-50 shadow-[0_-4px_15px_rgba(55,50,50,0.15)]">
-      <button onClick={() => setViewStack([{name: 'home', params: {}}])} className={`flex flex-col items-center p-2 rounded-xl transition-colors ${currentView.name === 'home' ? 'text-[#A00A0F]' : 'text-[#373232]/60'}`}>
+      <button onClick={() => { setViewStack([{name: 'home', params: {}}]); setFavSelectedPoetId(null); }} className={`flex flex-col items-center p-2 rounded-xl transition-colors ${currentView.name === 'home' ? 'text-[#A00A0F]' : 'text-[#373232]/60'}`}>
         <Home size={24} className={currentView.name === 'home' ? 'fill-[#A00A0F]/10' : ''} />
         <span className="text-[10px] mt-1 font-bold">خانه</span>
       </button>
@@ -491,7 +562,8 @@ export default function DoostApp() {
   };
 
   // --- VIEWS ---
-  const HomeView = () => {
+  
+  const renderHomeView = () => {
     const poets = queryData('getPoets');
     
     // Selected poets for top section
@@ -517,11 +589,12 @@ export default function DoostApp() {
       return styles[id % styles.length];
     };
 
-    const PoetCard = ({ poet }) => {
+    const renderPoetCard = (poet) => {
       const isSelected = selectedPoetNames.includes(poet.name);
       const tint = getPoetStyle(poet.id);
       return (
         <button 
+          key={poet.id}
           onClick={() => navigate('category', { 
             id: poet.cat_id, 
             title: poet.name, 
@@ -543,7 +616,7 @@ export default function DoostApp() {
     };
 
     return (
-      <div className="versesbox animate-in fade-in duration-300 pb-24">
+      <div className="h-full overflow-y-auto view-scroll-container versesbox animate-in fade-in duration-300 pb-24">
         <AppBar title="" showBack={false} />
         
         <div className="p-4 md:p-6 max-w-4xl mx-auto">
@@ -556,7 +629,7 @@ export default function DoostApp() {
                  شاعران منتخب
               </h2>
               <div className="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-4">
-                {selectedPoets.map(poet => <PoetCard key={`top-${poet.id}`} poet={poet} />)}
+                {selectedPoets.map(poet => renderPoetCard(poet))}
               </div>
             </div>
           )}
@@ -573,131 +646,144 @@ export default function DoostApp() {
                    {letter}
                  </h3>
                  <div className="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-4">
-                    {groupedPoets[letter].map(poet => <PoetCard key={`all-${poet.id}`} poet={poet} />)}
+                    {groupedPoets[letter].map(poet => renderPoetCard(poet))}
                  </div>
               </div>
             ))}
           </div>
 
+          {/* Floating Random Action Button */}
+          <button 
+            onClick={() => {
+              const p = queryData('getRandomPoem');
+              if(p) {
+                 navigateToPoemWithPath(p.id, p.title, p.cat_id);
+              }
+            }}
+            className="fixed bottom-24 left-6 bg-[#A00A0F] text-[#FAF4ED] p-4 rounded-full shadow-lg active:scale-90 transition-transform z-40 flex items-center gap-2 border-2 border-white/20"
+          >
+            <Shuffle size={24} />
+          </button>
         </div>
-
-        {/* Floating Random Action Button */}
-        <button 
-          onClick={() => {
-            const p = queryData('getRandomPoem');
-            if(p) {
-               const newCtx = buildContextFromCat(p.cat_id);
-               navigate('poem', { id: p.id, title: p.title, ctx: newCtx });
-            }
-          }}
-          className="fixed bottom-24 left-6 bg-[#A00A0F] text-[#FAF4ED] p-4 rounded-full shadow-lg active:scale-90 transition-transform z-40 flex items-center gap-2 border-2 border-white/20"
-        >
-          <Shuffle size={24} />
-        </button>
       </div>
     );
   };
 
-  const CategoryView = ({ id, title, isRoot, poet_id, ctx }) => {
+  const renderCategoryView = ({ id, title, isRoot, poet_id, ctx }) => {
     const subCats = queryData('getCatsByParent', isRoot ? { poet_id } : { parent_id: id });
     const poems = queryData('getPoemsByCat', { cat_id: id });
 
     return (
-      <div className="versesbox animate-in slide-in-from-right-4 duration-300 pb-24 min-h-screen bg-[#FAF4ED]">
-        <AppBar 
-          title={title} 
-          showBack={true} 
-          rightAction={
-            <div className="flex gap-1">
-               <button onClick={() => {
-                 setSearchState(prev => ({
-                    ...prev,
-                    selectedPoet: ctx?.poet_id || 'all',
-                    selectedBook: ctx?.book_id || 'all',
-                    selectedSection: ctx?.section_id || 'all',
-                    showFilters: true
-                 }));
-                 navigate('search');
-               }} className="p-2 rounded-full hover:bg-white/10 active:bg-white/20">
-                 <Search size={20} />
-               </button>
-               <button onClick={() => {
-                 const p = queryData('getRandomPoem', isRoot ? { poet_id } : { cat_id: id });
-                 if(p) {
-                    const newCtx = buildContextFromCat(p.cat_id);
-                    navigate('poem', { id: p.id, title: p.title, ctx: newCtx });
-                 }
-               }} className="p-2 -mr-1 rounded-full hover:bg-white/10 active:bg-white/20">
-                 <Shuffle size={20} />
-               </button>
-            </div>
-          }
-        />
-        <Breadcrumbs />
-
-        <div className="p-4 md:p-6 max-w-3xl mx-auto space-y-6">
-          {subCats.length > 0 && (
-            <div>
-              <h3 className="text-sm font-bold text-[#35646A]/70 mb-2 px-2">بخش‌ها</h3>
-              <div className="bg-white/80 backdrop-blur rounded-3xl overflow-hidden shadow-sm border border-[#35646A]/10">
-                {subCats.map((cat, idx) => (
-                  <button 
-                    key={cat.id} 
-                    onClick={() => {
-                       let newCtx = { ...ctx };
-                       if (!newCtx.book_id || newCtx.book_id === 'all') {
-                           newCtx.book_id = cat.id; newCtx.book_name = cat.text;
-                       } else {
-                           newCtx.section_id = cat.id; newCtx.section_name = cat.text;
-                       }
-                       navigate('category', { id: cat.id, title: cat.text, isRoot: false, ctx: newCtx });
-                    }}
-                    className={`w-full px-5 py-4 flex items-center justify-between active:bg-[#35646A]/5 transition-colors text-right ${idx !== subCats.length - 1 ? 'border-b border-[#35646A]/10' : ''}`}
-                  >
-                    <span className="font-bold text-[#373232] text-sm md:text-base">{cat.text}</span>
-                    <ChevronLeft size={18} className="text-[#35646A]/40 shrink-0" />
-                  </button>
-                ))}
+      <div className="flex flex-col h-full versesbox animate-in slide-in-from-right-4 duration-300 bg-[#FAF4ED]">
+        <div className="shrink-0 z-40 relative">
+          <AppBar 
+            title={title} 
+            showBack={true} 
+            rightAction={
+              <div className="flex gap-1">
+                 <button onClick={() => {
+                   setSearchState(prev => ({
+                      ...prev,
+                      selectedPoet: ctx?.poet_id || 'all',
+                      selectedBook: ctx?.book_id || 'all',
+                      selectedSection: ctx?.section_id || 'all',
+                      showFilters: true
+                   }));
+                   navigate('search');
+                 }} className="p-2 rounded-full hover:bg-white/10 active:bg-white/20">
+                   <Search size={20} />
+                 </button>
+                 <button onClick={() => {
+                   const p = queryData('getRandomPoem', isRoot ? { poet_id } : { cat_id: id });
+                   if(p) {
+                      navigateToPoemWithPath(p.id, p.title, p.cat_id);
+                   }
+                 }} className="p-2 -mr-1 rounded-full hover:bg-white/10 active:bg-white/20">
+                   <Shuffle size={20} />
+                 </button>
               </div>
-            </div>
-          )}
+            }
+          />
+          <Breadcrumbs />
+        </div>
 
-          {poems.length > 0 && (
-            <div>
-              <h3 className="text-sm font-bold text-[#35646A]/70 mb-2 px-2">اشعار</h3>
-              <div className="bg-white/80 backdrop-blur rounded-3xl overflow-hidden shadow-sm border border-[#35646A]/10">
-                {poems.map((poem, idx) => (
-                  <button 
-                    key={poem.id} 
-                    onClick={() => navigate('poem', { id: poem.id, title: poem.title, ctx })}
-                    className={`w-full px-5 py-4 flex items-center justify-between active:bg-[#A00A0F]/5 transition-colors text-right ${idx !== poems.length - 1 ? 'border-b border-[#35646A]/10' : ''}`}
-                  >
-                    <span className="text-[#373232] font-semibold text-sm md:text-base">{poem.title}</span>
-                    <ChevronLeft size={16} className="text-[#35646A]/30 shrink-0" />
-                  </button>
-                ))}
+        <div className="flex-1 overflow-y-auto view-scroll-container pb-24 p-4 md:p-6">
+          <div className="max-w-3xl mx-auto space-y-6">
+            {subCats.length > 0 && (
+              <div>
+                <h3 className="text-sm font-bold text-[#35646A]/70 mb-2 px-2">بخش‌ها</h3>
+                <div className="bg-white/80 backdrop-blur rounded-3xl overflow-hidden shadow-sm border border-[#35646A]/10">
+                  {subCats.map((cat, idx) => (
+                    <button 
+                      key={cat.id} 
+                      onClick={() => {
+                         let newCtx = { ...ctx };
+                         if (!newCtx.book_id || newCtx.book_id === 'all') {
+                             newCtx.book_id = cat.id; newCtx.book_name = cat.text;
+                         } else {
+                             newCtx.section_id = cat.id; newCtx.section_name = cat.text;
+                         }
+                         navigate('category', { id: cat.id, title: cat.text, isRoot: false, ctx: newCtx });
+                      }}
+                      className={`w-full px-5 py-4 flex items-center justify-between active:bg-[#35646A]/5 transition-colors text-right ${idx !== subCats.length - 1 ? 'border-b border-[#35646A]/10' : ''}`}
+                    >
+                      <span className="font-bold text-[#373232] text-sm md:text-base">{cat.text}</span>
+                      <ChevronLeft size={18} className="text-[#35646A]/40 shrink-0" />
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
-          
-          {subCats.length === 0 && poems.length === 0 && (
-            <div className="text-center text-[#373232]/50 py-16 font-semibold">
-              محتوایی در این بخش یافت نشد.
-            </div>
-          )}
+            )}
+
+            {poems.length > 0 && (
+              <div>
+                <h3 className="text-sm font-bold text-[#35646A]/70 mb-2 px-2">اشعار</h3>
+                <div className="bg-white/80 backdrop-blur rounded-3xl overflow-hidden shadow-sm border border-[#35646A]/10">
+                  {poems.map((poem, idx) => (
+                    <button 
+                      key={poem.id} 
+                      onClick={() => navigateToPoemWithPath(poem.id, poem.title, id)}
+                      className={`w-full px-5 py-4 flex items-center justify-between active:bg-[#A00A0F]/5 transition-colors text-right ${idx !== poems.length - 1 ? 'border-b border-[#35646A]/10' : ''}`}
+                    >
+                      <span className="text-[#373232] font-semibold text-sm md:text-base">{poem.title}</span>
+                      <ChevronLeft size={16} className="text-[#35646A]/30 shrink-0" />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+            
+            {subCats.length === 0 && poems.length === 0 && (
+              <div className="text-center text-[#373232]/50 py-16 font-semibold">
+                محتوایی در این بخش یافت نشد.
+              </div>
+            )}
+          </div>
         </div>
       </div>
     );
   };
 
-  const PoemView = ({ id, title, ctx }) => {
+  const renderPoemView = ({ id, title, ctx, returnStack }) => {
     const verses = queryData('getVerses', { poem_id: id });
     const poemObj = queryData('getPoem', { id });
     const isFav = favorites.some(f => f.id === id);
 
     const toggleFav = () => {
-      if (isFav) setFavorites(favorites.filter(f => f.id !== id));
-      else if (poemObj) setFavorites([...favorites, { id: poemObj.id, title: poemObj.title, cat_id: poemObj.cat_id }]);
+      if (isFav) {
+          setFavorites(favorites.filter(f => f.id !== id));
+      } else if (poemObj) {
+          const fullCtx = buildContextFromCat(poemObj.cat_id);
+          setFavorites([...favorites, { 
+             id: poemObj.id, 
+             title: poemObj.title, 
+             cat_id: poemObj.cat_id,
+             poet_id: fullCtx.poet_id || 0,
+             poet_name: fullCtx.poet_name || 'ناشناس',
+             book_name: fullCtx.book_name || '',
+             section_name: fullCtx.section_name || ''
+          }]);
+      }
     };
 
     const renderVerses = () => {
@@ -748,45 +834,49 @@ export default function DoostApp() {
     };
 
     return (
-      <div className="versesbox animate-in fade-in duration-300 pb-24 min-h-screen">
-        <AppBar 
-          title={title} 
-          showBack={true} 
-          rightAction={
-            <div className="flex gap-1">
-              <button onClick={() => {
-                 setSearchState(prev => ({
-                    ...prev,
-                    selectedPoet: ctx?.poet_id || 'all',
-                    selectedBook: ctx?.book_id || 'all',
-                    selectedSection: ctx?.section_id || 'all',
-                    showFilters: true
-                 }));
-                 navigate('search');
-              }} className="p-2 rounded-full active:bg-white/20 transition-colors">
-                <Search size={20} />
-              </button>
-              <button onClick={toggleFav} className="p-2 rounded-full active:bg-white/20 transition-colors">
-                <Heart size={20} className={isFav ? "fill-white text-white" : ""} />
-              </button>
-              <button onClick={() => setShareData({ poem: poemObj, verses })} className="p-2 -mr-1 rounded-full active:bg-white/20 transition-colors">
-                <Share2 size={20} />
-              </button>
-            </div>
-          }
-        />
-        <Breadcrumbs />
+      <div className="flex flex-col h-full versesbox animate-in fade-in duration-300 bg-[#FAF4ED]">
+        <div className="shrink-0 z-40 relative">
+          <AppBar 
+            title={title} 
+            showBack={true} 
+            onBack={returnStack ? () => setViewStack(returnStack) : undefined}
+            rightAction={
+              <div className="flex gap-1">
+                <button onClick={() => {
+                   setSearchState(prev => ({
+                      ...prev,
+                      selectedPoet: ctx?.poet_id || 'all',
+                      selectedBook: ctx?.book_id || 'all',
+                      selectedSection: ctx?.section_id || 'all',
+                      showFilters: true
+                   }));
+                   navigate('search');
+                }} className="p-2 rounded-full active:bg-white/20 transition-colors">
+                  <Search size={20} />
+                </button>
+                <button onClick={toggleFav} className="p-2 rounded-full active:bg-white/20 transition-colors">
+                  <Heart size={20} className={isFav ? "fill-white text-white" : ""} />
+                </button>
+                <button onClick={() => setShareData({ poem: poemObj, verses })} className="p-2 -mr-1 rounded-full active:bg-white/20 transition-colors">
+                  <Share2 size={20} />
+                </button>
+              </div>
+            }
+          />
+          <Breadcrumbs />
+        </div>
 
-        <div className="persian-pattern absolute inset-0 z-[-1] fixed"></div>
-
-        <div className="max-w-3xl mx-auto py-8 px-5 md:px-10 relative">
-          {renderVerses()}
+        <div className="flex-1 overflow-y-auto view-scroll-container pb-24 relative">
+          <div className="persian-pattern absolute inset-0 z-[-1]"></div>
+          <div className="max-w-3xl mx-auto py-8 px-5 md:px-10 relative">
+            {renderVerses()}
+          </div>
         </div>
       </div>
     );
   };
 
-  const SearchView = () => {
+  const renderSearchView = () => {
     const { term, results, hasSearched, showFilters, selectedPoet, selectedBook, selectedSection } = searchState;
     const updateSearch = (updates) => setSearchState(prev => ({ ...prev, ...updates }));
 
@@ -827,144 +917,220 @@ export default function DoostApp() {
     };
 
     return (
-      <div className="versesbox animate-in fade-in duration-300 pb-24 min-h-screen bg-[#FAF4ED]">
-        <AppBar title="جستجوی پیشرفته" showBack={false} rightAction={
-           <button onClick={() => updateSearch({ showFilters: !showFilters })} className={`p-2 rounded-full transition-colors ${showFilters ? 'bg-white/20' : 'active:bg-white/20'}`}>
-              <Filter size={20} />
-           </button>
-        }/>
-        
-        <div className="p-4 md:p-6 max-w-3xl mx-auto">
-          {/* Advanced Filters Panel */}
-          {showFilters && (
-            <div className="bg-white p-5 rounded-3xl border border-[#35646A]/10 shadow-sm mb-6 animate-in slide-in-from-top-2">
-               <h3 className="text-[#35646A] font-bold mb-4 text-sm flex items-center gap-2"><Filter size={16}/> فیلترهای جستجو</h3>
-               <div className="space-y-3">
-                  <div>
-                    <label className="text-xs text-[#373232]/70 font-bold mb-1 block">شاعر</label>
-                    <select value={selectedPoet} onChange={handlePoetChange} className="w-full bg-[#FAF4ED] border border-[#35646A]/20 rounded-xl p-3 text-sm font-semibold text-[#373232] outline-none focus:border-[#35646A]">
-                       <option value="all">همه موارد</option>
-                       {poets.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                    </select>
-                  </div>
-                  
-                  {selectedPoet !== 'all' && books.length > 0 && (
+      <div className="flex flex-col h-full versesbox animate-in fade-in duration-300 bg-[#FAF4ED]">
+        <div className="shrink-0 z-40 relative bg-[#FAF4ED] shadow-sm pb-4 rounded-b-3xl border-b border-[#35646A]/10">
+          <AppBar title="جستجوی پیشرفته" showBack={false} rightAction={
+             <button onClick={() => updateSearch({ showFilters: !showFilters })} className={`p-2 rounded-full transition-colors ${showFilters ? 'bg-white/20' : 'active:bg-white/20'}`}>
+                <Filter size={20} />
+             </button>
+          }/>
+          
+          <div className="px-4 md:px-6 max-w-3xl mx-auto mt-4">
+            {/* Advanced Filters Panel */}
+            {showFilters && (
+              <div className="bg-white p-5 rounded-3xl border border-[#35646A]/10 shadow-sm mb-4 animate-in slide-in-from-top-2">
+                 <h3 className="text-[#35646A] font-bold mb-4 text-sm flex items-center gap-2"><Filter size={16}/> فیلترهای جستجو</h3>
+                 <div className="space-y-3">
                     <div>
-                      <label className="text-xs text-[#373232]/70 font-bold mb-1 block">کتاب / بخش اصلی</label>
-                      <select value={selectedBook} onChange={handleBookChange} className="w-full bg-[#FAF4ED] border border-[#35646A]/20 rounded-xl p-3 text-sm font-semibold text-[#373232] outline-none focus:border-[#35646A]">
+                      <label className="text-xs text-[#373232]/70 font-bold mb-1 block">شاعر</label>
+                      <select value={selectedPoet} onChange={handlePoetChange} className="w-full bg-[#FAF4ED] border border-[#35646A]/20 rounded-xl p-3 text-sm font-semibold text-[#373232] outline-none focus:border-[#35646A]">
                          <option value="all">همه موارد</option>
-                         {books.map(b => <option key={b.id} value={b.id}>{b.text}</option>)}
+                         {poets.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                       </select>
                     </div>
-                  )}
+                    
+                    {selectedPoet !== 'all' && books.length > 0 && (
+                      <div>
+                        <label className="text-xs text-[#373232]/70 font-bold mb-1 block">کتاب / بخش اصلی</label>
+                        <select value={selectedBook} onChange={handleBookChange} className="w-full bg-[#FAF4ED] border border-[#35646A]/20 rounded-xl p-3 text-sm font-semibold text-[#373232] outline-none focus:border-[#35646A]">
+                           <option value="all">همه موارد</option>
+                           {books.map(b => <option key={b.id} value={b.id}>{b.text}</option>)}
+                        </select>
+                      </div>
+                    )}
 
-                  {selectedBook !== 'all' && sections.length > 0 && (
-                    <div>
-                      <label className="text-xs text-[#373232]/70 font-bold mb-1 block">بخش فرعی</label>
-                      <select value={selectedSection} onChange={e => updateSearch({ selectedSection: e.target.value === 'all' ? 'all' : Number(e.target.value) })} className="w-full bg-[#FAF4ED] border border-[#35646A]/20 rounded-xl p-3 text-sm font-semibold text-[#373232] outline-none focus:border-[#35646A]">
-                         <option value="all">همه موارد</option>
-                         {sections.map(s => <option key={s.id} value={s.id}>{s.text}</option>)}
-                      </select>
-                    </div>
-                  )}
-               </div>
-            </div>
-          )}
-
-          <form onSubmit={handleSearch} className="mb-6 flex gap-2">
-            <div className="relative flex-1">
-              <input 
-                type="text" 
-                value={term}
-                onChange={e => updateSearch({ term: e.target.value })}
-                placeholder="جستجو در متن اشعار..."
-                className="w-full pl-4 pr-12 py-4 bg-white border border-[#35646A]/20 rounded-2xl focus:outline-none focus:border-[#35646A] focus:ring-1 focus:ring-[#35646A] transition-all text-[#373232] font-semibold shadow-sm"
-              />
-              <Search className="absolute right-4 top-4 text-[#35646A]/50" size={24} />
-            </div>
-            <button type="submit" className="bg-[#35646A] text-[#FAF4ED] px-6 rounded-2xl active:bg-[#35646A]/80 font-bold transition-colors shadow-md">
-              بگرد
-            </button>
-          </form>
-
-          {hasSearched && (
-            <div className="space-y-4">
-              <h3 className="text-sm font-bold text-[#35646A]/70 px-2 flex justify-between">
-                <span>{results.length} نتیجه یافت شد</span>
-                {(selectedPoet !== 'all' || selectedBook !== 'all') && (
-                   <span className="bg-[#35646A]/10 text-[#35646A] px-2 py-0.5 rounded text-[10px]">فیلتر اعمال شده</span>
-                )}
-              </h3>
-              
-              <div className="space-y-3">
-                {results.map((res, i) => (
-                  <button 
-                    key={i} 
-                    onClick={() => navigate('poem', { id: res.poem_id, title: res.poem_title, ctx: { poet_name: res.poet_name, section_name: res.cat_name } })}
-                    className="w-full text-right bg-white p-5 rounded-3xl border border-[#35646A]/10 shadow-sm active:scale-[0.98] transition-all"
-                  >
-                    <p className="font-poem text-lg md:text-xl text-[#373232] mb-4 leading-[2]">
-                      ... <span className="bg-[#A00A0F]/10 text-[#A00A0F] px-1 rounded">{res.text}</span> ...
-                    </p>
-                    <div className="flex flex-wrap items-center text-[10px] md:text-xs text-[#373232]/60 gap-1 md:gap-2 font-bold bg-[#FAF4ED] self-start inline-flex px-3 py-2 rounded-lg border border-[#35646A]/5">
-                      <span className="text-[#35646A]">{res.poet_name}</span>
-                      <ChevronLeft size={10} className="opacity-50" />
-                      <span>{res.cat_name}</span>
-                      <ChevronLeft size={10} className="opacity-50" />
-                      <span className="text-ellipsis overflow-hidden whitespace-nowrap max-w-[100px] sm:max-w-none">{res.poem_title}</span>
-                    </div>
-                  </button>
-                ))}
-                
-                {results.length === 0 && (
-                  <div className="text-center py-16 text-[#373232]/40 font-bold bg-white/50 rounded-3xl border border-[#35646A]/10 border-dashed">
-                    نتیجه‌ای برای «{term}» یافت نشد.
-                  </div>
-                )}
+                    {selectedBook !== 'all' && sections.length > 0 && (
+                      <div>
+                        <label className="text-xs text-[#373232]/70 font-bold mb-1 block">بخش فرعی</label>
+                        <select value={selectedSection} onChange={e => updateSearch({ selectedSection: e.target.value === 'all' ? 'all' : Number(e.target.value) })} className="w-full bg-[#FAF4ED] border border-[#35646A]/20 rounded-xl p-3 text-sm font-semibold text-[#373232] outline-none focus:border-[#35646A]">
+                           <option value="all">همه موارد</option>
+                           {sections.map(s => <option key={s.id} value={s.id}>{s.text}</option>)}
+                        </select>
+                      </div>
+                    )}
+                 </div>
               </div>
-            </div>
-          )}
+            )}
+
+            <form onSubmit={handleSearch} className="flex gap-2">
+              <div className="relative flex-1">
+                <input 
+                  type="text" 
+                  value={term}
+                  onChange={e => updateSearch({ term: e.target.value })}
+                  placeholder="جستجو در متن اشعار..."
+                  className="w-full pl-4 pr-12 py-4 bg-white border border-[#35646A]/20 rounded-2xl focus:outline-none focus:border-[#35646A] focus:ring-1 focus:ring-[#35646A] transition-all text-[#373232] font-semibold shadow-sm"
+                />
+                <Search className="absolute right-4 top-4 text-[#35646A]/50" size={24} />
+              </div>
+              <button type="submit" className="bg-[#35646A] text-[#FAF4ED] px-6 rounded-2xl active:bg-[#35646A]/80 font-bold transition-colors shadow-md">
+                بگرد
+              </button>
+            </form>
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-y-auto view-scroll-container p-4 md:p-6 pb-24">
+          <div className="max-w-3xl mx-auto space-y-4">
+            {hasSearched && (
+              <>
+                <h3 className="text-sm font-bold text-[#35646A]/70 px-2 flex justify-between">
+                  <span>{results.length} نتیجه یافت شد</span>
+                  {(selectedPoet !== 'all' || selectedBook !== 'all') && (
+                     <span className="bg-[#35646A]/10 text-[#35646A] px-2 py-0.5 rounded text-[10px]">فیلتر اعمال شده</span>
+                  )}
+                </h3>
+                
+                <div className="space-y-3">
+                  {results.map((res, i) => (
+                    <button 
+                      key={i} 
+                      onClick={() => navigateToPoemWithPath(res.poem_id, res.poem_title, res.cat_id)}
+                      className="w-full text-right bg-white p-5 rounded-3xl border border-[#35646A]/10 shadow-sm active:scale-[0.98] transition-all"
+                    >
+                      <p className="font-poem text-lg md:text-xl text-[#373232] mb-4 leading-[2]">
+                        ... <span className="bg-[#A00A0F]/10 text-[#A00A0F] px-1 rounded">{res.text}</span> ...
+                      </p>
+                      <div className="flex flex-wrap items-center text-[10px] md:text-xs text-[#373232]/60 gap-1 md:gap-2 font-bold bg-[#FAF4ED] self-start inline-flex px-3 py-2 rounded-lg border border-[#35646A]/5">
+                        <span className="text-[#35646A]">{res.poet_name}</span>
+                        <ChevronLeft size={10} className="opacity-50" />
+                        <span>{res.cat_name}</span>
+                        <ChevronLeft size={10} className="opacity-50" />
+                        <span className="text-ellipsis overflow-hidden whitespace-nowrap max-w-[100px] sm:max-w-none">{res.poem_title}</span>
+                      </div>
+                    </button>
+                  ))}
+                  
+                  {results.length === 0 && (
+                    <div className="text-center py-16 text-[#373232]/40 font-bold bg-white/50 rounded-3xl border border-[#35646A]/10 border-dashed">
+                      نتیجه‌ای برای «{term}» یافت نشد.
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </div>
     );
   };
 
-  const FavoritesView = () => (
-    <div className="versesboxanimate-in fade-in duration-300 pb-24 min-h-screen bg-[#FAF4ED]">
-      <AppBar title="نشان‌ها" showBack={false} />
-      
-      <div className="p-4 md:p-6 max-w-3xl mx-auto">
-        {favorites.length === 0 ? (
-          <div className="text-center py-20 flex flex-col items-center">
-            <div className="w-24 h-24 bg-white rounded-full flex items-center justify-center mb-6 shadow-sm border border-[#35646A]/5">
-               <Heart size={40} className="text-[#35646A]/20" />
-            </div>
-            <p className="text-[#373232]/60 font-bold text-lg">هیچ شعری را هنوز نشان نکرده‌اید.</p>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {favorites.map(fav => (
-              <button 
-                key={fav.id} 
-                onClick={() => navigate('poem', { id: fav.id, title: fav.title })}
-                className="w-full bg-white p-5 rounded-3xl border border-[#35646A]/10 shadow-sm active:scale-[0.98] transition-all flex justify-between items-center text-right"
-              >
-                <div>
-                  <h3 className="font-bold text-[#373232] text-lg mb-1">{fav.title}</h3>
-                  <span className="text-xs text-[#35646A]/70 font-semibold flex items-center gap-1">
-                     <BookOpen size={12} /> باز کردن شعر
-                  </span>
+  const renderFavoritesView = () => {
+    // Group favorites by poet dynamically
+    const grouped = {};
+    favorites.forEach(fav => {
+       // Fallback for older saved favorites before update
+       let pId = fav.poet_id;
+       let pName = fav.poet_name;
+       let bName = fav.book_name;
+       let sName = fav.section_name;
+
+       if (!pName) {
+           const ctx = buildContextFromCat(fav.cat_id);
+           pId = ctx.poet_id || 0;
+           pName = ctx.poet_name || 'ناشناس';
+           bName = ctx.book_name || '';
+           sName = ctx.section_name || '';
+       }
+
+       if (!grouped[pId]) {
+           grouped[pId] = { name: pName, count: 0, items: [] };
+       }
+       grouped[pId].count++;
+       grouped[pId].items.push({ ...fav, book_name: bName, section_name: sName });
+    });
+
+    const poetsList = Object.keys(grouped).map(k => ({ id: k, ...grouped[k] }));
+
+    // Selected Poet's Poems View
+    if (favSelectedPoetId && grouped[favSelectedPoetId]) {
+       const selectedGroup = grouped[favSelectedPoetId];
+       return (
+         <div className="flex flex-col h-full versesbox animate-in slide-in-from-right-4 duration-300 bg-[#FAF4ED]">
+           <div className="shrink-0 z-40 relative">
+             <AppBar 
+               title={`نشان‌های ${selectedGroup.name}`} 
+               showBack={true} 
+               onBack={() => setFavSelectedPoetId(null)}
+             />
+           </div>
+           <div className="flex-1 overflow-y-auto view-scroll-container pb-24 p-4 md:p-6">
+              <div className="max-w-3xl mx-auto space-y-3">
+                {selectedGroup.items.map(fav => (
+                   <button 
+                     key={fav.id} 
+                     onClick={() => navigateToPoemWithPath(fav.id, fav.title, fav.cat_id)}
+                     className="w-full bg-white p-5 rounded-3xl border border-[#35646A]/10 shadow-sm active:scale-[0.98] transition-all flex justify-between items-center text-right"
+                   >
+                     <div>
+                       <h3 className="font-bold text-[#373232] text-lg mb-1">{fav.title}</h3>
+                       <span className="text-xs text-[#35646A]/70 font-semibold flex items-center gap-1">
+                          <BookOpen size={12} /> 
+                          {[fav.book_name, fav.section_name].filter(Boolean).join('، ') || 'بدون دسته‌بندی'}
+                       </span>
+                     </div>
+                     <div className="w-10 h-10 bg-[#FAF4ED] rounded-full flex items-center justify-center shrink-0">
+                        <ChevronLeft size={20} className="text-[#A00A0F]" />
+                     </div>
+                   </button>
+                ))}
+              </div>
+           </div>
+         </div>
+       );
+    }
+
+    // Default Poets List View
+    return (
+      <div className="flex flex-col h-full versesbox animate-in fade-in duration-300 bg-[#FAF4ED]">
+        <div className="shrink-0 z-40 relative">
+          <AppBar title="نشان‌ها" showBack={false} />
+        </div>
+        <div className="flex-1 overflow-y-auto view-scroll-container pb-24 p-4 md:p-6">
+          <div className="max-w-3xl mx-auto">
+            {poetsList.length === 0 ? (
+              <div className="text-center py-20 flex flex-col items-center">
+                <div className="w-24 h-24 bg-white rounded-full flex items-center justify-center mb-6 shadow-sm border border-[#35646A]/5">
+                   <Heart size={40} className="text-[#35646A]/20" />
                 </div>
-                <div className="w-10 h-10 bg-[#FAF4ED] rounded-full flex items-center justify-center shrink-0">
-                   <ChevronLeft size={20} className="text-[#A00A0F]" />
-                </div>
-              </button>
-            ))}
+                <p className="text-[#373232]/60 font-bold text-lg">هیچ شعری را هنوز نشان نکرده‌اید.</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {poetsList.map(poet => (
+                  <button 
+                    key={poet.id} 
+                    onClick={() => setFavSelectedPoetId(poet.id)}
+                    className="w-full bg-white p-5 rounded-3xl border border-[#35646A]/10 shadow-sm active:scale-[0.98] transition-all flex justify-between items-center text-right"
+                  >
+                    <div>
+                      <h3 className="font-bold text-[#373232] text-lg mb-1">{poet.name}</h3>
+                      <span className="text-xs text-[#35646A]/70 font-semibold flex items-center gap-1">
+                         <BookOpen size={12} /> {poet.count} شعر نشان شده
+                      </span>
+                    </div>
+                    <div className="w-10 h-10 bg-[#FAF4ED] rounded-full flex items-center justify-center shrink-0">
+                       <ChevronLeft size={20} className="text-[#A00A0F]" />
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
-        )}
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   // --- SPLASH SCREEN (DB Loading) ---
   if (appLoading) {
@@ -973,7 +1139,7 @@ export default function DoostApp() {
         <div className="absolute inset-0 persian-pattern opacity-10 mix-blend-overlay"></div>
         <div className="relative z-10 flex flex-col items-center">
           <div className="w-48 h-48 bg-[rgb(250 244 237 / 43%)] rounded-3xl shadow-2xl flex items-center justify-center mb-8 rotate-3">
-            <img src="logo.png"></img>
+            <img src="/logo.png"></img>
           </div>
           <p className="text-[#FAF4ED]/70 font-medium mb-12">گنجینه شعر و ادب پارسی</p>
           <Loader2 className="animate-spin text-[#FAF4ED]/50" size={32} />
@@ -984,13 +1150,13 @@ export default function DoostApp() {
 
   // --- MAIN APP STRUCTURE ---
   return (
-    <div className="min-h-screen bg-[#FAF4ED] relative w-full max-w-md md:max-w-none mx-auto shadow-2xl md:shadow-none overflow-x-hidden flex flex-col">
-      <main className="flex-1 w-full relative bg-transparent">
-        {currentView.name === 'home' && <HomeView />}
-        {currentView.name === 'category' && <CategoryView {...currentView.params} />}
-        {currentView.name === 'poem' && <PoemView {...currentView.params} />}
-        {currentView.name === 'search' && <SearchView />}
-        {currentView.name === 'favorites' && <FavoritesView />}
+    <div className="h-[100dvh] bg-[#FAF4ED] relative w-full max-w-md md:max-w-none mx-auto shadow-2xl md:shadow-none overflow-hidden flex flex-col">
+      <main className="flex-1 w-full relative bg-transparent overflow-hidden">
+        {currentView.name === 'home' && renderHomeView()}
+        {currentView.name === 'category' && renderCategoryView(currentView.params)}
+        {currentView.name === 'poem' && renderPoemView(currentView.params)}
+        {currentView.name === 'search' && renderSearchView()}
+        {currentView.name === 'favorites' && renderFavoritesView()}
       </main>
       
       <BottomNav />
