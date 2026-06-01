@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { 
   Home, Search, Shuffle, Heart, Share2, ChevronRight, ChevronLeft, 
-  BookOpen, Info, Loader2, Copy, Check, Filter, Star, Hash, MoreVertical
+  BookOpen, Info, Loader2, Copy, Check, Filter, Star, Hash, MoreVertical, Moon, Sun
 } from 'lucide-react';
 
 // --- STYLES & FONTS ---
@@ -126,6 +126,23 @@ const fontStyles = `
     background-position: left 1rem center;
     padding-left: 2.5rem;
   }
+
+  /* --- DARK MODE --- */
+  html.dark-mode {
+    filter: invert(1) hue-rotate(180deg);
+    background-color: #050b12;
+  }
+  html.dark-mode body {
+    background-color: #050b12;
+  }
+  /* Keep images in their original colors */
+  html.dark-mode img {
+    filter: invert(1) hue-rotate(180deg);
+  }
+  /* Tone down the background pattern slightly for dark mode */
+  html.dark-mode .persian-pattern {
+    opacity: 0.04;
+  }
 `;
 
 // --- MOCK DATA FALLBACK ---
@@ -207,6 +224,10 @@ export default function DoostApp() {
   const [favSelectedPoetId, setFavSelectedPoetId] = useState(null);
   const [shareData, setShareData] = useState(null);
 
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    return localStorage.getItem('doost_theme') === 'dark';
+  });
+
   const [searchState, setSearchState] = useState({
     term: '',
     results: [],
@@ -242,6 +263,9 @@ export default function DoostApp() {
   const [swipeState, setSwipeState] = useState({ offset: 0, isDragging: false, isSnapping: false, isAnimating: false });
   const touchStartX = useRef(0);
   const touchCurrentX = useRef(0);
+  const touchStartY = useRef(0);
+  const touchCurrentY = useRef(0);
+  const [touchVertical, setTouchVertical] = useState(false);
 
   const activePoemId = currentView.name === 'poem' ? currentView.params.id : null;
 
@@ -345,6 +369,17 @@ export default function DoostApp() {
   useEffect(() => {
     localStorage.setItem('doost_selected_poets', JSON.stringify(selectedPoetNames));
   }, [selectedPoetNames]);
+
+  // Sync Dark Mode Class
+  useEffect(() => {
+    if (isDarkMode) {
+      document.documentElement.classList.add('dark-mode');
+      localStorage.setItem('doost_theme', 'dark');
+    } else {
+      document.documentElement.classList.remove('dark-mode');
+      localStorage.setItem('doost_theme', 'light');
+    }
+  }, [isDarkMode]);
 
   // Scroll to top of individual views on navigation
   useEffect(() => {
@@ -854,7 +889,15 @@ export default function DoostApp() {
 
     return (
       <div className="h-full overflow-y-auto view-scroll-container versesbox animate-in fade-in duration-300 pb-24">
-        <AppBar title="" showBack={false} />
+        <AppBar 
+          title="" 
+          showBack={false} 
+          rightAction={
+             <button onClick={() => setIsDarkMode(!isDarkMode)} className="p-2 -mr-2 rounded-full hover:bg-white/10 active:bg-white/20 transition-colors relative z-50">
+                {isDarkMode ? <Sun size={24} /> : <Moon size={24} />}
+             </button>
+          }
+        />
         
         <div className="p-4 md:p-6 max-w-4xl mx-auto">
           
@@ -1011,13 +1054,25 @@ export default function DoostApp() {
         if (swipeState.isAnimating) return;
         touchStartX.current = e.touches[0].clientX;
         touchCurrentX.current = touchStartX.current;
+        touchStartY.current = e.touches[0].clientY;
+        touchCurrentY.current = touchStartY.current;
         setSwipeState({ offset: 0, isDragging: true, isSnapping: false, isAnimating: false });
     };
     
     const handleTouchMove = (e) => {
-        if (!swipeState.isDragging || swipeState.isAnimating) return;
+        if (!swipeState.isDragging || swipeState.isAnimating || touchVertical) return;
+        
+        touchCurrentY.current = e.touches[0].clientY;
+        const deltaY = touchCurrentY.current - touchStartY.current;
         touchCurrentX.current = e.touches[0].clientX;
         const deltaX = touchCurrentX.current - touchStartX.current;
+
+        // Detect if movement is primarily vertical
+        if (Math.abs(deltaY) > Math.abs(deltaX)) {
+          // It's a vertical scroll, don't trigger navigation
+          setTouchVertical(true);
+          return; 
+        }
 
         // Prevent dragging to directions without content
         if (deltaX > 0 && !nextPoem) return;
@@ -1028,6 +1083,7 @@ export default function DoostApp() {
     
     const handleTouchEnd = () => {
         if (swipeState.isAnimating) return;
+        setTouchVertical(false);
         const threshold = window.innerWidth / 3;
         
         if (swipeState.offset > threshold && nextPoem) {
