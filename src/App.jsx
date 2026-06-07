@@ -34,7 +34,7 @@ const fontStyles = `
     --color-green: #35646a;
     --color-cream: #FAF4ED;
     --color-brown: #373232;
-    --color-dark-green: #35646ad9;
+    --color-dark-green: #232323;
     --color-lighter-green: #244246de;
     --color-darker-green: #0e0f0f;
   }
@@ -144,7 +144,36 @@ const fontStyles = `
   .search-badge{
     background-color: #FAF4ED;
   }
-
+  
+  .style1{
+    background-color: #35646a14;
+    border-color: #35646a1A;
+    color: #35646A;
+  }
+  .style2{
+    background-color: #A00A0F0F;
+    border-color: #A00A0F1A;
+    color: #A00A0F;
+  }
+  .style3{
+    background-color: #35646A0A;
+    border-color: #35646a0D;
+    color: #35646A;
+  }
+  .style4{
+    background-color: #35646A0A;
+    border-color: #A00A0F0D;
+    color: #A00A0F;
+  }
+  .style5{
+    background-color: #ffffff;
+    border-color: #35646A1A;
+    color: #373232;
+  }
+  .active-nav{
+    color: #A00A0F;
+  }
+  
   /* --- DARK MODE --- */
   html.dark-mode {
     background-color: var(--color-darker-green);
@@ -162,8 +191,13 @@ const fontStyles = `
     filter: invert(1);
   }
   html.dark-mode .drop-menu, html.dark-mode .drop-menu .icon {
-    background-color: var(--color-lighter-green);
-    color: var(--color-cream);
+    background-color: #1c1c1c;
+    color: #6f6f6f;
+  }
+  html.dark-mode .drop-menu button {
+    background-color: #1c1c1c;
+    color: #6f6f6f;
+    border-color: #292828
   }
   html.dark-mode .search-result{
     background-color: black;
@@ -172,8 +206,17 @@ const fontStyles = `
     background-color: var(--color-darker-green);
     color: var(--color-cream);
   }
-  html.dark-mode nav, html.dark-mode .advanced-search, html.dark-mode .breadcrumb, html.dark-mode .sharebox {
+  html.dark-mode nav, html.dark-mode .advanced-search, html.dark-mode .breadcrumb {
     background-color: var(--color-dark-green);
+  }
+  html.dark-mode .sharebox{
+    background-color: #191919;
+  }
+  html.dark-mode .sharebox .close-btn{
+    background-color: #575757;
+  }
+  html.dark-mode .handle{
+    background-color: #9b9b9b;  
   }
   html.dark-mode .advanced-filter{
     background-color: var(--color-lighter-green);
@@ -184,6 +227,34 @@ const fontStyles = `
   /* Tone down the background pattern slightly for dark mode */
   html.dark-mode .persian-pattern {
     opacity: 0.04;
+  }
+  html.dark-mode .style1 {
+    background-color: #4a4848;
+    border-color: #4a4848;
+    color: #cacaca;
+  }
+  html.dark-mode .style2 {
+    background-color: #281c1c;
+    border-color: #1a1212;
+    color: #A00A0F;
+  }
+  html.dark-mode .style4 {
+    background-color: #1b2624;
+    border-color: rgb(32, 43, 41);
+    color: #35646A;
+  }
+  html.dark-mode .style3 {
+    background-color: #4a4848;
+    border-color: #4a4848;
+    color: #cacaca;
+  }
+  html.dark-mode .style5 {
+    background-color: #1d1d1d;
+    border-color: #000000;
+    color: #cacaca;
+  }
+  html.dark-mode .active-nav{
+    color: #A00A0F;
   }
 `;
 
@@ -726,7 +797,7 @@ export default function DoostApp() {
             <React.Fragment key={idx}>
               <button 
                 onClick={() => setViewStack(viewStack.slice(0, idx + 1))} 
-                className={`active:opacity-50 transition-opacity flex-shrink-0 ${idx === viewStack.length - 1 ? 'opacity-100 text-[#A00A0F]' : 'opacity-70'}`}
+                className={`active:opacity-50 transition-opacity flex-shrink-0 ${idx === viewStack.length - 1 ? 'opacity-100' : 'opacity-70'}`}
               >
                 {title}
               </button>
@@ -740,15 +811,15 @@ export default function DoostApp() {
 
   const BottomNav = () => (
     <nav className="fixed bottom-0 w-full bg-[#FAF4ED]/95 backdrop-blur-md border-t border-[#35646A]/10 px-6 py-2 pb-safe flex justify-between items-center z-50 shadow-[0_-4px_15px_rgba(55,50,50,0.15)]">
-      <button onClick={() => { setViewStack([{name: 'home', params: {}}]); setFavSelectedPoetId(null); }} className={`flex flex-col items-center p-2 rounded-xl transition-colors ${currentView.name === 'home' ? 'text-[#A00A0F]' : 'text-[#373232]/60'}`}>
+      <button onClick={() => { setViewStack([{name: 'home', params: {}}]); setFavSelectedPoetId(null); }} className={`flex flex-col items-center p-2 rounded-xl transition-colors ${currentView.name === 'home' ? 'active-nav' : 'text-[#373232]/60'}`}>
         <Home size={24} className={currentView.name === 'home' ? 'fill-[#A00A0F]/10' : ''} />
         <span className="text-[10px] mt-1 font-bold">خانه</span>
       </button>
-      <button onClick={() => navigate('search')} className={`flex flex-col items-center p-2 rounded-xl transition-colors ${currentView.name === 'search' ? 'text-[#A00A0F]' : 'text-[#373232]/60'}`}>
+      <button onClick={() => navigate('search')} className={`flex flex-col items-center p-2 rounded-xl transition-colors ${currentView.name === 'search' ? 'active-nav' : 'text-[#373232]/60'}`}>
         <Search size={24} />
         <span className="text-[10px] mt-1 font-bold">جستجو</span>
       </button>
-      <button onClick={() => navigate('favorites')} className={`flex flex-col items-center p-2 rounded-xl transition-colors ${currentView.name === 'favorites' ? 'text-[#A00A0F]' : 'text-[#373232]/60'}`}>
+      <button onClick={() => navigate('favorites')} className={`flex flex-col items-center p-2 rounded-xl transition-colors ${currentView.name === 'favorites' ? 'active-nav' : 'text-[#373232]/60'}`}>
         <Heart size={24} className={currentView.name === 'favorites' ? 'fill-[#A00A0F]/10' : ''} />
         <span className="text-[10px] mt-1 font-bold">نشان‌ها</span>
       </button>
@@ -846,7 +917,7 @@ export default function DoostApp() {
                  if (isDragging) handleTouchEnd();
              }}
           >
-             <div className="w-12 h-1.5 bg-[#373232]/20 rounded-full pointer-events-none"></div>
+             <div className="handle w-12 h-1.5 bg-[#373232]/20 rounded-full pointer-events-none"></div>
           </div>
           
           <h3 className="share-title text-xl font-bold mb-4 text-[#35646A] border-b border-[#35646A]/10 pb-3">اشتراک‌گذاری شعر</h3>
@@ -856,7 +927,7 @@ export default function DoostApp() {
           </div>
 
           <div className="flex gap-3 mb-4">
-            <button onClick={handleClose} className="px-4 py-3 text-[#373232] bg-[#373232]/5 rounded-xl active:bg-[#373232]/10 transition-colors w-1/3 font-bold">
+            <button onClick={handleClose} className="px-4 py-3 close-btn text-[#373232] bg-[#373232]/5 rounded-xl active:bg-[#373232]/10 transition-colors w-1/3 font-bold">
               بستن
             </button>
             <button onClick={copyToClipboard} className="px-4 py-3 bg-[#35646A] text-[#FAF4ED] rounded-xl active:bg-[#35646A]/80 flex-1 flex justify-center items-center gap-2 transition-colors font-bold shadow-md">
@@ -886,11 +957,11 @@ export default function DoostApp() {
 
     const getPoetStyle = (id) => {
       const styles = [
-        'bg-[#35646A]/[0.08] border-[#35646A]/10 text-[#35646A]', 
-        'bg-[#A00A0F]/[0.06] border-[#A00A0F]/10 text-[#A00A0F]', 
-        'bg-[#35646A]/[0.05] border-[#35646A]/5 text-[#35646A]', 
-        'bg-[#A00A0F]/[0.04] border-[#A00A0F]/5 text-[#A00A0F]',
-        'bg-solid border-[#35646A]/10 text-[#373232]'
+        'style1',
+        'style2',
+        'style3',
+        'style4',
+        'style5'
       ];
       return styles[id % styles.length];
     };

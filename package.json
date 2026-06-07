@@ -14,6 +14,8 @@
     "apk:build": "npm run apk:sync && cd android && gradlew assembleDebug && cd ..",
     "android:assets": "npx capacitor-assets generate --android",
     "android:dev": "npm run apk:build && adb install -r android\\app\\build\\outputs\\apk\\debug\\app-debug.apk",
+    "desktop:dev": "npm run build && npx cap copy && cd electron && npm run electron:start",
+    "desktop:build": "npm run build && npx cap copy && cd electron && npm run electron:pack",
     "predeploy": "npm run build:ghpages",
     "deploy": "gh-pages -d dist"
   },
