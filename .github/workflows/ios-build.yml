@@ -5,6 +5,9 @@ on:
     branches: [main]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build-ios:
     runs-on: macos-latest
@@ -51,9 +54,13 @@ jobs:
           cp -r "$RUNNER_TEMP/App.xcarchive/Products/Applications/App.app" Payload/
           zip -r Doost.ipa Payload
 
-      - name: Upload IPA artifact
-        uses: actions/upload-artifact@v4
+      - name: Publish dev-test release
+        uses: softprops/action-gh-release@v2
         with:
-          name: Doost-unsigned-ipa
-          path: Doost.ipa
-          retention-days: 14
+          tag_name: dev-test
+          name: "iOS Dev Test Build (${{ github.sha }})"
+          body: |
+            Automatically built unsigned IPA from commit ${{ github.sha }} on `main`.
+            This is **not signed** — sign it with Sideloadly (or a similar tool) before installing on a device.
+          prerelease: true
+          files: Doost.ipa
