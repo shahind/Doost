@@ -762,7 +762,7 @@ export default function DoostApp() {
 
   // --- NATIVE APP COMPONENTS ---
   const AppBar = ({ title, showBack, rightAction, onBack }) => (
-    <header className="shrink-0 text-[#FAF4ED] shadow-md px-4 py-3 flex items-center justify-between z-40 relative">
+    <header className="shrink-0 text-[#FAF4ED] shadow-md px-4 py-3 pt-safe flex items-center justify-between z-40 relative">
       <div className="w-16 flex justify-start">
         {showBack && (
           <button onClick={onBack || goBack} className="p-2 -ml-2 rounded-full hover:bg-white/10 active:bg-white/20 transition-colors relative z-50">
