@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { 
-  Home, Search, Shuffle, Heart, Share2, ChevronRight, ChevronLeft, 
-  BookOpen, Info, Loader2, Copy, Check, Filter, Star, Hash, MoreVertical, Moon, Sun
+import {
+  Home, Search, Shuffle, Heart, Share2, ChevronRight, ChevronLeft, ChevronDown,
+  BookOpen, Info, Loader2, Copy, Check, Filter, Star, Hash, MoreVertical, Moon, Sun, X
 } from 'lucide-react';
 
 // --- STYLES & FONTS ---
@@ -59,27 +59,13 @@ const fontStyles = `
     line-height: 2.2;
   }
 
-  .persian-pattern {
-    background-color: var(--color-cream);
-    background-image: 
-      radial-gradient(var(--color-green) 1px, transparent 1px),
-      radial-gradient(var(--color-green) 1px, transparent 1px);
-    background-size: 24px 24px;
-    background-position: 0 0, 12px 12px;
-    opacity: 0.06;
-  }
-  
   ::-webkit-scrollbar { width: 0px; background: transparent; }
   .hide-scrollbar::-webkit-scrollbar { display: none; }
   .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
   
   .pb-safe { padding-bottom: env(safe-area-inset-bottom, 16px); }
   .pt-safe { padding-top: env(safe-area-inset-top, 0px); }
-
-  .versesbox {
-    background-image: url("bg.png");
-    background-repeat: repeat;
-  }
+  .fab-safe-bottom { bottom: calc(6rem + env(safe-area-inset-bottom, 0px)); }
 
   /* --- CUSTOM ANIMATIONS --- */
   @keyframes fadeIn {
@@ -125,15 +111,6 @@ const fontStyles = `
   }
   .highlight-pulse { animation: pulseHighlight 2s forwards; }
 
-  /* Custom Select Arrow Fix */
-  .select-custom-arrow {
-    appearance: none;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2335646A' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
-    background-repeat: no-repeat;
-    background-position: left 1rem center;
-    padding-left: 2.5rem;
-  }
-
   .bg-solid{
     background-color: white;
   }
@@ -175,14 +152,19 @@ const fontStyles = `
   }
   
   /* --- DARK MODE --- */
-  html.dark-mode {
+  :root {
+    --dark-accent-teal: #7bb3ba;
+    --dark-accent-red: #e5747a;
+    --dark-surface: #1c1c1c;
+    --dark-surface-2: #242424;
+    --dark-border: rgba(255, 255, 255, 0.08);
+  }
+  html.dark-mode, html.dark-mode body {
     background-color: var(--color-darker-green);
+    color: var(--color-cream);
   }
   html.dark-mode .bg-solid{
-    background-color: black;
-  }
-  html.dark-mode body {
-    background-color: var(--color-darker-green);
+    background-color: var(--dark-surface);
   }
   html.dark-mode .versesbox{
     background-color: var(--color-darker-green);
@@ -190,20 +172,24 @@ const fontStyles = `
   html.dark-mode .logo {
     filter: invert(1);
   }
+  /* Header keeps the brand hue but muted, so it doesn't clash with the near-black body */
+  html.dark-mode header {
+    background-color: #16282a;
+  }
   html.dark-mode .drop-menu, html.dark-mode .drop-menu .icon {
-    background-color: #1c1c1c;
-    color: #6f6f6f;
+    background-color: var(--dark-surface);
+    color: var(--color-cream);
   }
   html.dark-mode .drop-menu button {
-    background-color: #1c1c1c;
-    color: #6f6f6f;
-    border-color: #292828
+    background-color: var(--dark-surface);
+    color: var(--color-cream);
+    border-color: #2f2f2f;
   }
-  html.dark-mode .search-result{
-    background-color: black;
+  html.dark-mode .search-result, html.dark-mode .list-card, html.dark-mode .search-input, html.dark-mode .combo-dropdown {
+    background-color: var(--dark-surface);
   }
   html.dark-mode .search-badge, html.dark-mode .fave-item, html.dark-mode .share-preview{
-    background-color: var(--color-darker-green);
+    background-color: var(--dark-surface-2);
     color: var(--color-cream);
   }
   html.dark-mode nav, html.dark-mode .advanced-search, html.dark-mode .breadcrumb {
@@ -216,45 +202,86 @@ const fontStyles = `
     background-color: #575757;
   }
   html.dark-mode .handle{
-    background-color: #9b9b9b;  
+    background-color: #9b9b9b;
   }
   html.dark-mode .advanced-filter{
-    background-color: var(--color-lighter-green);
+    background-color: var(--dark-surface-2);
   }
   html.dark-mode button, html.dark-mode .advanced-search, html.dark-mode .advanced-filter, html.dark-mode .font-poem, html.dark-mode .share-title  {
     color: var(--color-cream);
   }
-  /* Tone down the background pattern slightly for dark mode */
-  html.dark-mode .persian-pattern {
-    opacity: 0.04;
+  html.dark-mode input::placeholder {
+    color: rgba(250, 244, 237, 0.35);
   }
+  /* Neutralize hardcoded light-mode text/surface/border utilities app-wide.
+     Uses [class~="..."] attribute selectors (exact space-separated token match)
+     instead of escaped .class selectors: this string is a JS template literal,
+     and JS silently drops backslashes before non-special characters (\[ \# \/ \:
+     are not real JS escapes), which quietly broke every escaped selector here. */
+  html.dark-mode [class~="text-[#373232]"],
+  html.dark-mode [class~="text-[#373232]/40"],
+  html.dark-mode [class~="text-[#373232]/50"],
+  html.dark-mode [class~="text-[#373232]/60"],
+  html.dark-mode [class~="text-[#373232]/80"] {
+    color: var(--color-cream);
+  }
+  html.dark-mode [class~="text-[#35646A]"],
+  html.dark-mode [class~="text-[#35646A]/20"],
+  html.dark-mode [class~="text-[#35646A]/30"],
+  html.dark-mode [class~="text-[#35646A]/40"],
+  html.dark-mode [class~="text-[#35646A]/50"],
+  html.dark-mode [class~="text-[#35646A]/70"] {
+    color: var(--dark-accent-teal);
+  }
+  html.dark-mode [class~="text-[#A00A0F]"] {
+    color: var(--dark-accent-red);
+  }
+  html.dark-mode [class~="border-[#35646A]/5"],
+  html.dark-mode [class~="border-[#35646A]/10"],
+  html.dark-mode [class~="border-[#35646A]/20"],
+  html.dark-mode [class~="focus:border-[#35646A]"]:focus {
+    border-color: var(--dark-border);
+  }
+  html.dark-mode [class~="focus:ring-[#35646A]"]:focus {
+    --tw-ring-color: var(--dark-accent-teal);
+  }
+  html.dark-mode [class~="bg-white"],
+  html.dark-mode [class~="bg-white/80"],
+  html.dark-mode [class~="bg-white/60"],
+  html.dark-mode [class~="bg-white/50"] {
+    background-color: var(--dark-surface);
+  }
+  html.dark-mode .control-surface {
+    background-color: var(--dark-surface);
+  }
+
   html.dark-mode .style1 {
-    background-color: #4a4848;
-    border-color: #4a4848;
-    color: #cacaca;
+    background-color: #33393a;
+    border-color: #33393a;
+    color: #d8d8d8;
   }
   html.dark-mode .style2 {
-    background-color: #281c1c;
-    border-color: #1a1212;
-    color: #A00A0F;
-  }
-  html.dark-mode .style4 {
-    background-color: #1b2624;
-    border-color: rgb(32, 43, 41);
-    color: #35646A;
+    background-color: #34191b;
+    border-color: #34191b;
+    color: var(--dark-accent-red);
   }
   html.dark-mode .style3 {
-    background-color: #4a4848;
-    border-color: #4a4848;
-    color: #cacaca;
+    background-color: #2a3536;
+    border-color: #2a3536;
+    color: #d8d8d8;
+  }
+  html.dark-mode .style4 {
+    background-color: #1b2c2e;
+    border-color: #1b2c2e;
+    color: var(--dark-accent-teal);
   }
   html.dark-mode .style5 {
-    background-color: #1d1d1d;
+    background-color: var(--dark-surface);
     border-color: #000000;
-    color: #cacaca;
+    color: #d8d8d8;
   }
   html.dark-mode .active-nav{
-    color: #A00A0F;
+    color: var(--dark-accent-red);
   }
 `;
 
@@ -323,6 +350,89 @@ const MarqueeTitle = ({ title }) => {
   );
 };
 
+// --- SEARCHABLE FILTER DROPDOWN (typeahead over a long list) ---
+const SearchableSelect = ({ value, onChange, options, getLabel, getValue, placeholder }) => {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState('');
+  const containerRef = useRef(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handleOutside = (e) => {
+      if (containerRef.current && !containerRef.current.contains(e.target)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handleOutside);
+    document.addEventListener('touchstart', handleOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleOutside);
+      document.removeEventListener('touchstart', handleOutside);
+    };
+  }, [open]);
+
+  useEffect(() => { if (open) setQuery(''); }, [open]);
+
+  const selected = options.find(o => String(getValue(o)) === String(value));
+  const filtered = query.trim() ? options.filter(o => getLabel(o).includes(query.trim())) : options;
+
+  return (
+    <div className="relative" ref={containerRef}>
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        className="control-surface w-full bg-[#FAF4ED] border border-[#35646A]/20 rounded-xl p-3 text-sm font-semibold text-[#373232] outline-none focus:border-[#35646A] flex items-center justify-between gap-2 text-right"
+      >
+        <span className="truncate">{selected ? getLabel(selected) : placeholder}</span>
+        <ChevronDown size={16} className={`shrink-0 text-[#35646A] transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+
+      {open && (
+        <div className="combo-dropdown absolute z-50 top-full mt-1 w-full bg-white border border-[#35646A]/20 rounded-xl shadow-lg max-h-64 flex flex-col overflow-hidden animate-in fade-in slide-in-from-top-2">
+          <div className="p-2 border-b border-[#35646A]/10 shrink-0 relative">
+            <input
+              autoFocus
+              type="text"
+              value={query}
+              onChange={e => setQuery(e.target.value)}
+              placeholder="جستجوی نام..."
+              className="control-surface w-full pl-8 pr-3 py-2 bg-[#FAF4ED] rounded-lg text-sm outline-none border border-[#35646A]/10 focus:border-[#35646A] text-[#373232]"
+            />
+            {query && (
+              <button type="button" onClick={() => setQuery('')} className="absolute left-4 top-1/2 -translate-y-1/2 p-1 text-[#35646A]/50">
+                <X size={14} />
+              </button>
+            )}
+          </div>
+          <div className="flex-1 min-h-0 overflow-y-auto hide-scrollbar">
+            <button
+              type="button"
+              onClick={() => { onChange('all'); setOpen(false); }}
+              className={`w-full text-right px-4 py-3 text-sm font-semibold active:bg-[#35646A]/5 transition-colors ${value === 'all' ? 'text-[#A00A0F]' : 'text-[#373232]'}`}
+            >
+              همه موارد
+            </button>
+            {filtered.map(o => (
+              <button
+                key={getValue(o)}
+                type="button"
+                onClick={() => { onChange(getValue(o)); setOpen(false); }}
+                className={`w-full text-right px-4 py-3 text-sm font-semibold active:bg-[#35646A]/5 transition-colors border-t border-[#35646A]/5 ${String(value) === String(getValue(o)) ? 'text-[#A00A0F]' : 'text-[#373232]'}`}
+              >
+                {getLabel(o)}
+              </button>
+            ))}
+            {filtered.length === 0 && (
+              <div className="px-4 py-6 text-center text-xs text-[#373232]/40 font-bold">موردی یافت نشد</div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+
+// Stable identity for a view frame, used to remember/restore its scroll position.
+const getViewKey = (view) => `${view.name}:${view.params?.id ?? ''}`;
 
 // --- MAIN APPLICATION COMPONENT ---
 export default function DoostApp() {
@@ -358,6 +468,7 @@ export default function DoostApp() {
   
   const currentView = viewStack[viewStack.length - 1];
   const viewStackRef = useRef(viewStack);
+  const scrollPositions = useRef({});
 
   // ==========================================
   // HOISTED VIEW HOOKS (Fix for React Rules of Hooks)
@@ -374,11 +485,17 @@ export default function DoostApp() {
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const highlightRef = useRef(null);
   const [swipeState, setSwipeState] = useState({ offset: 0, isDragging: false, isSnapping: false, isAnimating: false });
+  const swipeStateRef = useRef(swipeState);
+  const swipeContainerRef = useRef(null);
+  const nextPanelRef = useRef(null);
+  const prevPanelRef = useRef(null);
   const touchStartX = useRef(0);
   const touchCurrentX = useRef(0);
   const touchStartY = useRef(0);
   const touchCurrentY = useRef(0);
-  const [touchVertical, setTouchVertical] = useState(false);
+  const touchVerticalRef = useRef(false);
+
+  useEffect(() => { swipeStateRef.current = swipeState; }, [swipeState]);
 
   const activePoemId = currentView.name === 'poem' ? currentView.params.id : null;
 
@@ -494,10 +611,24 @@ export default function DoostApp() {
     }
   }, [isDarkMode]);
 
-  // Scroll to top of individual views on navigation
+  // Remember each view's scroll offset (capture phase: 'scroll' doesn't bubble, so this
+  // is the only reliable way to hear it from any nested .view-scroll-container).
+  useEffect(() => {
+    const handleScroll = (e) => {
+      if (e.target?.classList?.contains('view-scroll-container')) {
+        const key = getViewKey(viewStackRef.current[viewStackRef.current.length - 1]);
+        scrollPositions.current[key] = e.target.scrollTop;
+      }
+    };
+    document.addEventListener('scroll', handleScroll, true);
+    return () => document.removeEventListener('scroll', handleScroll, true);
+  }, []);
+
+  // Restore each view's remembered scroll offset on navigation (fresh views start at 0
+  // since they have no entry yet; going back restores where the user left off).
   useEffect(() => {
     const scrollable = document.querySelector('.view-scroll-container');
-    if (scrollable) scrollable.scrollTop = 0;
+    if (scrollable) scrollable.scrollTop = scrollPositions.current[getViewKey(currentView)] || 0;
   }, [viewStack, favSelectedPoetId]);
 
   // --- QUERY ABSTRACTION ---
@@ -759,6 +890,56 @@ export default function DoostApp() {
       setSelectedPoetNames([...selectedPoetNames, name]);
     }
   };
+
+  // Poem prev/next navigation context, hoisted so the native (non-passive) swipe
+  // listener below can read it without depending on renderPoemView's local scope.
+  const poemNav = useMemo(() => {
+    if (currentView.name !== 'poem' || !activePoemId) return { poemObj: null, nextPoem: null, prevPoem: null };
+    const poemObj = queryData('getPoem', { id: activePoemId });
+    if (!poemObj) return { poemObj: null, nextPoem: null, prevPoem: null };
+    const poemsInCat = queryData('getPoemsByCat', { cat_id: poemObj.cat_id });
+    const currentIndex = poemsInCat.findIndex(p => p.id === activePoemId);
+    const nextPoem = currentIndex >= 0 && currentIndex < poemsInCat.length - 1 ? poemsInCat[currentIndex + 1] : null;
+    const prevPoem = currentIndex > 0 ? poemsInCat[currentIndex - 1] : null;
+    return { poemObj, nextPoem, prevPoem };
+  }, [currentView.name, activePoemId, db, useMockData]);
+
+  // Native (non-passive) touchmove listener: React's onTouchMove is passive by default,
+  // so calling preventDefault() there can't actually stop vertical scrolling. Once a
+  // swipe is committed to horizontal (prev/next poem), we need real preventDefault to
+  // stop the page from also scrolling vertically underneath the gesture.
+  useEffect(() => {
+    const el = swipeContainerRef.current;
+    if (!el) return;
+
+    const onTouchMove = (e) => {
+      const s = swipeStateRef.current;
+      if (!s.isDragging || s.isAnimating) return;
+      if (touchVerticalRef.current) return;
+
+      const t = e.touches[0];
+      touchCurrentY.current = t.clientY;
+      const deltaY = touchCurrentY.current - touchStartY.current;
+      touchCurrentX.current = t.clientX;
+      const deltaX = touchCurrentX.current - touchStartX.current;
+
+      if (Math.abs(deltaY) > Math.abs(deltaX)) {
+        touchVerticalRef.current = true;
+        return;
+      }
+
+      // Committed to a horizontal swipe: block native vertical scroll for the rest of the gesture.
+      e.preventDefault();
+
+      if (deltaX > 0 && !poemNav.nextPoem) return;
+      if (deltaX < 0 && !poemNav.prevPoem) return;
+
+      setSwipeState(prev => ({ ...prev, offset: deltaX, isDragging: true }));
+    };
+
+    el.addEventListener('touchmove', onTouchMove, { passive: false });
+    return () => el.removeEventListener('touchmove', onTouchMove);
+  }, [poemNav.nextPoem, poemNav.prevPoem]);
 
   // --- NATIVE APP COMPONENTS ---
   const AppBar = ({ title, showBack, rightAction, onBack }) => (
@@ -1050,7 +1231,7 @@ export default function DoostApp() {
                  navigateToPoemWithPath(p.id, p.title, p.cat_id);
               }
             }}
-            className="fixed bottom-24 left-6 bg-[#A00A0F] text-[#FAF4ED] p-4 rounded-full shadow-lg active:scale-90 transition-transform z-40 flex items-center gap-2 border-2 border-white/20"
+            className="fixed fab-safe-bottom left-6 bg-[#A00A0F] text-[#FAF4ED] p-4 rounded-full shadow-lg active:scale-90 transition-transform z-40 flex items-center gap-2 border-2 border-white/20"
           >
             <Shuffle size={24} />
           </button>
@@ -1155,13 +1336,8 @@ export default function DoostApp() {
   };
 
   const renderPoemView = ({ id, title, ctx, returnStack, searchTerm }) => {
-    const poemObj = queryData('getPoem', { id });
+    const { poemObj, nextPoem, prevPoem } = poemNav;
     const isFav = favorites.some(f => f.id === id);
-    
-    const poemsInCat = queryData('getPoemsByCat', { cat_id: poemObj?.cat_id });
-    const currentIndex = poemsInCat.findIndex(p => p.id === id);
-    const nextPoem = currentIndex >= 0 && currentIndex < poemsInCat.length - 1 ? poemsInCat[currentIndex + 1] : null;
-    const prevPoem = currentIndex > 0 ? poemsInCat[currentIndex - 1] : null;
 
     const handleTouchStart = (e) => {
         if (swipeState.isAnimating) return;
@@ -1169,34 +1345,18 @@ export default function DoostApp() {
         touchCurrentX.current = touchStartX.current;
         touchStartY.current = e.touches[0].clientY;
         touchCurrentY.current = touchStartY.current;
+        touchVerticalRef.current = false;
+        // Previews are reveal-only (not meant to be independently scrollable by the
+        // user) — pin them to top before every drag so the reveal is always a clean
+        // slide-in from the top, never a leftover scroll offset from an earlier visit.
+        if (nextPanelRef.current) nextPanelRef.current.scrollTop = 0;
+        if (prevPanelRef.current) prevPanelRef.current.scrollTop = 0;
         setSwipeState({ offset: 0, isDragging: true, isSnapping: false, isAnimating: false });
     };
-    
-    const handleTouchMove = (e) => {
-        if (!swipeState.isDragging || swipeState.isAnimating || touchVertical) return;
-        
-        touchCurrentY.current = e.touches[0].clientY;
-        const deltaY = touchCurrentY.current - touchStartY.current;
-        touchCurrentX.current = e.touches[0].clientX;
-        const deltaX = touchCurrentX.current - touchStartX.current;
 
-        // Detect if movement is primarily vertical
-        if (Math.abs(deltaY) > Math.abs(deltaX)) {
-          // It's a vertical scroll, don't trigger navigation
-          setTouchVertical(true);
-          return; 
-        }
-
-        // Prevent dragging to directions without content
-        if (deltaX > 0 && !nextPoem) return;
-        if (deltaX < 0 && !prevPoem) return;
-
-        setSwipeState(s => ({ ...s, offset: deltaX, isDragging: true }));
-    };
-    
     const handleTouchEnd = () => {
         if (swipeState.isAnimating) return;
-        setTouchVertical(false);
+        touchVerticalRef.current = false;
         const threshold = window.innerWidth / 3;
         
         if (swipeState.offset > threshold && nextPoem) {
@@ -1269,24 +1429,55 @@ export default function DoostApp() {
       let i = 0;
       let firstHighlightSet = false;
 
+      // Word boundary characters: whitespace + common punctuation (Persian & Latin).
+      // Matches inside a word are expanded to the whole word so Persian letter joining
+      // never gets cut mid-word by a highlight span.
+      const wordBoundary = /[\s.,;:!?()«»"“”'’\-]/;
+
       const renderText = (text) => {
          if (!searchTerm) return text;
-         const parts = text.split(new RegExp(`(${searchTerm})`, 'gi'));
-         return parts.map((part, idx) => {
-            if (part.toLowerCase() === searchTerm.toLowerCase()) {
-               const isFirst = !firstHighlightSet && isHighlighted;
-               if (isFirst) firstHighlightSet = true;
-               return (
-                 <span
-                   key={idx}
-                   ref={isFirst ? highlightRef : null}
-                   className="bg-[#A00A0F]/20 text-[#A00A0F] highlight-phrase rounded px-1 transition-all duration-1000 highlight-pulse inline-block"
-                 >
-                   {part}
-                 </span>
-               );
+         const lowerText = text.toLowerCase();
+         const lowerTerm = searchTerm.toLowerCase();
+         if (!lowerTerm) return text;
+
+         const segments = [];
+         let cursor = 0;
+         let searchFrom = 0;
+         while (true) {
+            const idx = lowerText.indexOf(lowerTerm, searchFrom);
+            if (idx === -1) break;
+
+            let start = idx;
+            while (start > 0 && !wordBoundary.test(text[start - 1])) start--;
+            let end = idx + searchTerm.length;
+            while (end < text.length && !wordBoundary.test(text[end])) end++;
+
+            if (start < cursor) {
+               searchFrom = idx + searchTerm.length;
+               continue;
             }
-            return part;
+
+            if (start > cursor) segments.push({ text: text.slice(cursor, start), match: false });
+            segments.push({ text: text.slice(start, end), match: true });
+            cursor = end;
+            searchFrom = end;
+         }
+         if (cursor < text.length) segments.push({ text: text.slice(cursor), match: false });
+         if (segments.length === 0) return text;
+
+         return segments.map((seg, idx) => {
+            if (!seg.match) return seg.text;
+            const isFirst = !firstHighlightSet && isHighlighted;
+            if (isFirst) firstHighlightSet = true;
+            return (
+              <span
+                key={idx}
+                ref={isFirst ? highlightRef : null}
+                className="bg-[#A00A0F]/20 text-[#A00A0F] highlight-phrase rounded px-1 transition-all duration-1000 highlight-pulse"
+              >
+                {seg.text}
+              </span>
+            );
          });
       };
       
@@ -1388,18 +1579,19 @@ export default function DoostApp() {
         </div>
 
         {/* Swipe Container Area */}
-        <div 
+        <div
+           ref={swipeContainerRef}
            className="flex-1 relative overflow-hidden bg-[#FAF4ED] versesbox"
            onTouchStart={handleTouchStart}
-           onTouchMove={handleTouchMove}
            onTouchEnd={handleTouchEnd}
         >
-           <div className="persian-pattern absolute inset-0 z-[0] pointer-events-none"></div>
 
            {/* Next Poem Layer (Revealed when swiping right. RTL Right: 100% means visual Left) */}
            {nextPoem && (
-              <div 
-                 className="absolute top-0 bottom-0 right-[100%] w-full py-8 px-5 md:px-10 overflow-y-auto view-scroll-container hide-scrollbar z-10 bg-[#FAF4ED]"
+              <div
+                 key={`next-${nextPoem.id}`}
+                 ref={nextPanelRef}
+                 className="absolute top-0 bottom-0 right-[100%] w-full py-8 px-5 md:px-10 overflow-y-auto view-scroll-container hide-scrollbar z-10 versesbox bg-[#FAF4ED]"
                  style={{
                     transform: `translateX(${swipeState.offset}px)`,
                     transition: (swipeState.isDragging || swipeState.isSnapping) ? 'none' : 'transform 0.3s ease-out'
@@ -1410,7 +1602,8 @@ export default function DoostApp() {
            )}
 
            {/* Current Poem Layer */}
-           <div 
+           <div
+              key={`current-${id}`}
               className="absolute top-0 bottom-0 right-0 w-full py-8 px-5 md:px-10 overflow-y-auto view-scroll-container hide-scrollbar z-20 bg-transparent pb-32"
               style={{
                  transform: `translateX(${swipeState.offset}px)`,
@@ -1422,8 +1615,10 @@ export default function DoostApp() {
 
            {/* Previous Poem Layer (Revealed when swiping left. RTL Right: -100% means visual Right) */}
            {prevPoem && (
-              <div 
-                 className="absolute top-0 bottom-0 right-[-100%] w-full py-8 px-5 md:px-10 overflow-y-auto view-scroll-container hide-scrollbar z-10 bg-[#FAF4ED]"
+              <div
+                 key={`prev-${prevPoem.id}`}
+                 ref={prevPanelRef}
+                 className="absolute top-0 bottom-0 right-[-100%] w-full py-8 px-5 md:px-10 overflow-y-auto view-scroll-container hide-scrollbar z-10 versesbox bg-[#FAF4ED]"
                  style={{
                     transform: `translateX(${swipeState.offset}px)`,
                     transition: (swipeState.isDragging || swipeState.isSnapping) ? 'none' : 'transform 0.3s ease-out'
@@ -1445,19 +1640,23 @@ export default function DoostApp() {
     const books = selectedPoet !== 'all' ? queryData('getCatsByParent', { poet_id: selectedPoet }) : [];
     const sections = selectedBook !== 'all' ? queryData('getCatsByParent', { parent_id: selectedBook }) : [];
 
-    const handlePoetChange = (e) => {
+    const handlePoetChange = (val) => {
       updateSearch({
-          selectedPoet: e.target.value === 'all' ? 'all' : Number(e.target.value),
+          selectedPoet: val === 'all' ? 'all' : Number(val),
           selectedBook: 'all',
           selectedSection: 'all'
       });
     };
-    
-    const handleBookChange = (e) => {
+
+    const handleBookChange = (val) => {
       updateSearch({
-          selectedBook: e.target.value === 'all' ? 'all' : Number(e.target.value),
+          selectedBook: val === 'all' ? 'all' : Number(val),
           selectedSection: 'all'
       });
+    };
+
+    const handleSectionChange = (val) => {
+      updateSearch({ selectedSection: val === 'all' ? 'all' : Number(val) });
     };
 
     const handleSearch = (e) => {
@@ -1492,34 +1691,46 @@ export default function DoostApp() {
           
           <div className="px-4 md:px-6 max-w-3xl mx-auto mt-4">
             {showFilters && (
-              <div className="advanced-filter p-5 rounded-3xl border border-[#35646A]/10 shadow-sm mb-4 animate-in slide-in-from-top-2">
+              <div className="advanced-filter relative z-20 p-5 rounded-3xl border border-[#35646A]/10 shadow-sm mb-4 animate-in slide-in-from-top-2">
                  <h3 className="text-[#35646A] font-bold mb-4 text-sm flex items-center gap-2"><Filter size={16}/> فیلترهای جستجو</h3>
                  <div className="space-y-3">
                     <div>
                       <label className="text-xs font-bold mb-1 block">شاعر</label>
-                      <select value={selectedPoet} onChange={handlePoetChange} className="w-full bg-[#FAF4ED] border border-[#35646A]/20 rounded-xl p-3 select-custom-arrow text-sm font-semibold text-[#373232] outline-none focus:border-[#35646A]">
-                         <option value="all">همه موارد</option>
-                         {poets.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                      </select>
+                      <SearchableSelect
+                        value={selectedPoet}
+                        onChange={handlePoetChange}
+                        options={poets}
+                        getLabel={p => p.name}
+                        getValue={p => p.id}
+                        placeholder="همه موارد"
+                      />
                     </div>
-                    
+
                     {selectedPoet !== 'all' && books.length > 0 && (
                       <div>
                         <label className="text-xs font-bold mb-1 block">کتاب / بخش اصلی</label>
-                        <select value={selectedBook} onChange={handleBookChange} className="w-full bg-[#FAF4ED] border border-[#35646A]/20 rounded-xl p-3 select-custom-arrow text-sm font-semibold text-[#373232] outline-none focus:border-[#35646A]">
-                           <option value="all">همه موارد</option>
-                           {books.map(b => <option key={b.id} value={b.id}>{b.text}</option>)}
-                        </select>
+                        <SearchableSelect
+                          value={selectedBook}
+                          onChange={handleBookChange}
+                          options={books}
+                          getLabel={b => b.text}
+                          getValue={b => b.id}
+                          placeholder="همه موارد"
+                        />
                       </div>
                     )}
 
                     {selectedBook !== 'all' && sections.length > 0 && (
                       <div>
                         <label className="text-xs font-bold mb-1 block">بخش فرعی</label>
-                        <select value={selectedSection} onChange={e => updateSearch({ selectedSection: e.target.value === 'all' ? 'all' : Number(e.target.value) })} className="w-full bg-[#FAF4ED] border border-[#35646A]/20 rounded-xl p-3 select-custom-arrow text-sm font-semibold text-[#373232] outline-none focus:border-[#35646A]">
-                           <option value="all">همه موارد</option>
-                           {sections.map(s => <option key={s.id} value={s.id}>{s.text}</option>)}
-                        </select>
+                        <SearchableSelect
+                          value={selectedSection}
+                          onChange={handleSectionChange}
+                          options={sections}
+                          getLabel={s => s.text}
+                          getValue={s => s.id}
+                          placeholder="همه موارد"
+                        />
                       </div>
                     )}
                  </div>
@@ -1698,7 +1909,6 @@ export default function DoostApp() {
   if (appLoading) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-[#35646A] text-[#FAF4ED] relative overflow-hidden">
-        <div className="absolute inset-0 persian-pattern opacity-10 mix-blend-overlay"></div>
         <div className="relative z-10 flex flex-col items-center">
           <div className="w-48 h-48 bg-[rgb(250 244 237 / 43%)] rounded-3xl shadow-2xl flex items-center justify-center mb-8 rotate-3">
             <img src="/logo.png" alt="Logo" />
@@ -1712,7 +1922,7 @@ export default function DoostApp() {
 
   // --- MAIN APP STRUCTURE ---
   return (
-    <div className="h-[100dvh] bg-[#FAF4ED] relative w-full max-w-md md:max-w-none mx-auto shadow-2xl md:shadow-none overflow-hidden flex flex-col">
+    <div className="h-[100dvh] versesbox bg-[#FAF4ED] relative w-full max-w-md md:max-w-none mx-auto shadow-2xl md:shadow-none overflow-hidden flex flex-col">
       <main className="flex-1 w-full relative bg-transparent overflow-hidden">
         {currentView.name === 'home' && renderHomeView()}
         {currentView.name === 'category' && renderCategoryView(currentView.params)}
