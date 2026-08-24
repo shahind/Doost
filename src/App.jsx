@@ -54,9 +54,12 @@ const fontStyles = `
     background-color: var(--color-green);
   }
 
+  /* Touch devices ignore cursor entirely, so this only affects the web build */
+  button:not(:disabled) { cursor: pointer; }
+  button:disabled { cursor: not-allowed; }
+
   .font-poem {
     font-family: 'Amiri', serif;
-    line-height: 2.2;
   }
 
   ::-webkit-scrollbar { width: 0px; background: transparent; }
@@ -111,6 +114,26 @@ const fontStyles = `
   }
   .highlight-pulse { animation: pulseHighlight 2s forwards; }
 
+  /* Staggered list/grid entrance (capped so long lists don't drag out the reveal) */
+  @keyframes staggerFadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .stagger-item { opacity: 0; animation: staggerFadeIn 350ms ease-out forwards; }
+
+  /* Respect the OS-level motion preference. Collapsing duration to ~0 (rather than
+     disabling animation-name) still lets each element land on its final, correct
+     state — including inline transition styles like the poem swipe transform,
+     since transition-duration set with !important overrides inline styles too. */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+
   .bg-solid{
     background-color: white;
   }
@@ -154,7 +177,7 @@ const fontStyles = `
   /* --- DARK MODE --- */
   :root {
     --dark-accent-teal: #7bb3ba;
-    --dark-accent-red: #e5747a;
+    --dark-accent-red: #c76b70;
     --dark-surface: #1c1c1c;
     --dark-surface-2: #242424;
     --dark-border: rgba(255, 255, 255, 0.08);
@@ -169,8 +192,13 @@ const fontStyles = `
   html.dark-mode .versesbox{
     background-color: var(--color-darker-green);
   }
+  /* The logo is a green->red gradient graphic, not a dark monochrome mark —
+     invert(1) alone just shifts it to an off-hue, muddy gradient that still
+     reads as "dark" against the dark header. brightness(0) first collapses it
+     to a pure black silhouette (keeping the alpha shape), then invert(1) flips
+     that to a clean, guaranteed-legible white mark. */
   html.dark-mode .logo {
-    filter: invert(1);
+    filter: brightness(0) invert(1);
   }
   /* Header keeps the brand hue but muted, so it doesn't clash with the near-black body */
   html.dark-mode header {
@@ -219,22 +247,31 @@ const fontStyles = `
      and JS silently drops backslashes before non-special characters (\[ \# \/ \:
      are not real JS escapes), which quietly broke every escaped selector here. */
   html.dark-mode [class~="text-[#373232]"],
-  html.dark-mode [class~="text-[#373232]/40"],
-  html.dark-mode [class~="text-[#373232]/50"],
-  html.dark-mode [class~="text-[#373232]/60"],
+  html.dark-mode [class~="text-[#373232]/75"],
   html.dark-mode [class~="text-[#373232]/80"] {
     color: var(--color-cream);
   }
   html.dark-mode [class~="text-[#35646A]"],
-  html.dark-mode [class~="text-[#35646A]/20"],
-  html.dark-mode [class~="text-[#35646A]/30"],
-  html.dark-mode [class~="text-[#35646A]/40"],
-  html.dark-mode [class~="text-[#35646A]/50"],
-  html.dark-mode [class~="text-[#35646A]/70"] {
+  html.dark-mode [class~="text-[#35646A]/70"],
+  html.dark-mode [class~="text-[#35646A]/90"] {
     color: var(--dark-accent-teal);
+  }
+  /* Intentionally-faint decorative icons (unselected star, empty-state illustration) —
+     keep them quiet in dark mode too, don't promote to full accent brightness. */
+  html.dark-mode [class~="text-[#35646A]/20"] {
+    color: rgba(123, 179, 186, 0.25);
   }
   html.dark-mode [class~="text-[#A00A0F]"] {
     color: var(--dark-accent-red);
+  }
+  /* fill-[...] is a separate SVG property from color/text-[...] and was missed
+     entirely in the first pass — the favorited star/heart icons stayed at the
+     raw, highly-saturated light-mode red instead of the calmer dark accent. */
+  html.dark-mode [class~="fill-[#A00A0F]"] {
+    fill: var(--dark-accent-red);
+  }
+  html.dark-mode [class~="fill-[#A00A0F]/10"] {
+    fill: rgba(199, 107, 112, 0.1);
   }
   html.dark-mode [class~="border-[#35646A]/5"],
   html.dark-mode [class~="border-[#35646A]/10"],
@@ -341,7 +378,7 @@ const MarqueeTitle = ({ title }) => {
     <div ref={containerRef} className="w-full overflow-hidden relative mx-2 h-full flex items-center justify-center mask-image-edges">
       <span
         ref={textRef}
-        className={`text-lg font-bold font-poem text-xl whitespace-nowrap inline-block ${maxScroll > 0 ? 'animate-marquee-rtl' : ''}`}
+        className={`text-lg font-bold font-poem text-xl leading-[2.2] whitespace-nowrap inline-block ${maxScroll > 0 ? 'animate-marquee-rtl' : ''}`}
         style={maxScroll > 0 ? { '--max-scroll': `${maxScroll}px`, '--min-scroll': `${minScroll}px`, animationDuration: `${Math.max(10, maxScroll / 20)}s` } : {}}
       >
         {title}
@@ -397,7 +434,7 @@ const SearchableSelect = ({ value, onChange, options, getLabel, getValue, placeh
               className="control-surface w-full pl-8 pr-3 py-2 bg-[#FAF4ED] rounded-lg text-sm outline-none border border-[#35646A]/10 focus:border-[#35646A] text-[#373232]"
             />
             {query && (
-              <button type="button" onClick={() => setQuery('')} className="absolute left-4 top-1/2 -translate-y-1/2 p-1 text-[#35646A]/50">
+              <button type="button" onClick={() => setQuery('')} className="absolute left-4 top-1/2 -translate-y-1/2 p-1 text-[#35646A]/70">
                 <X size={14} />
               </button>
             )}
@@ -421,7 +458,7 @@ const SearchableSelect = ({ value, onChange, options, getLabel, getValue, placeh
               </button>
             ))}
             {filtered.length === 0 && (
-              <div className="px-4 py-6 text-center text-xs text-[#373232]/40 font-bold">موردی یافت نشد</div>
+              <div className="px-4 py-6 text-center text-xs text-[#373232]/75 font-bold">موردی یافت نشد</div>
             )}
           </div>
         </div>
@@ -946,7 +983,7 @@ export default function DoostApp() {
     <header className="shrink-0 text-[#FAF4ED] shadow-md px-4 py-3 pt-safe flex items-center justify-between z-40 relative">
       <div className="w-16 flex justify-start">
         {showBack && (
-          <button onClick={onBack || goBack} className="p-2 -ml-2 rounded-full hover:bg-white/10 active:bg-white/20 transition-colors relative z-50">
+          <button onClick={onBack || goBack} className="p-2.5 -ml-2.5 rounded-full hover:bg-white/10 active:bg-white/20 transition-colors relative z-50">
             <ChevronRight size={24} />
           </button>
         )}
@@ -992,15 +1029,15 @@ export default function DoostApp() {
 
   const BottomNav = () => (
     <nav className="fixed bottom-0 w-full bg-[#FAF4ED]/95 backdrop-blur-md border-t border-[#35646A]/10 px-6 py-2 pb-safe flex justify-between items-center z-50 shadow-[0_-4px_15px_rgba(55,50,50,0.15)]">
-      <button onClick={() => { setViewStack([{name: 'home', params: {}}]); setFavSelectedPoetId(null); }} className={`flex flex-col items-center p-2 rounded-xl transition-colors ${currentView.name === 'home' ? 'active-nav' : 'text-[#373232]/60'}`}>
+      <button onClick={() => { setViewStack([{name: 'home', params: {}}]); setFavSelectedPoetId(null); }} className={`flex flex-col items-center p-2 rounded-xl transition-colors ${currentView.name === 'home' ? 'active-nav' : 'text-[#373232]/75'}`}>
         <Home size={24} className={currentView.name === 'home' ? 'fill-[#A00A0F]/10' : ''} />
         <span className="text-[10px] mt-1 font-bold">خانه</span>
       </button>
-      <button onClick={() => navigate('search')} className={`flex flex-col items-center p-2 rounded-xl transition-colors ${currentView.name === 'search' ? 'active-nav' : 'text-[#373232]/60'}`}>
+      <button onClick={() => navigate('search')} className={`flex flex-col items-center p-2 rounded-xl transition-colors ${currentView.name === 'search' ? 'active-nav' : 'text-[#373232]/75'}`}>
         <Search size={24} />
         <span className="text-[10px] mt-1 font-bold">جستجو</span>
       </button>
-      <button onClick={() => navigate('favorites')} className={`flex flex-col items-center p-2 rounded-xl transition-colors ${currentView.name === 'favorites' ? 'active-nav' : 'text-[#373232]/60'}`}>
+      <button onClick={() => navigate('favorites')} className={`flex flex-col items-center p-2 rounded-xl transition-colors ${currentView.name === 'favorites' ? 'active-nav' : 'text-[#373232]/75'}`}>
         <Heart size={24} className={currentView.name === 'favorites' ? 'fill-[#A00A0F]/10' : ''} />
         <span className="text-[10px] mt-1 font-bold">نشان‌ها</span>
       </button>
@@ -1032,7 +1069,7 @@ export default function DoostApp() {
        if (sheetOffset > 100) {
            setIsClosing(true);
            setSheetOffset(window.innerHeight);
-           setTimeout(() => onClose(), 300);
+           setTimeout(() => onClose(), 200);
        } else {
            setSheetOffset(0);
        }
@@ -1041,7 +1078,7 @@ export default function DoostApp() {
     const handleClose = () => {
         setIsClosing(true);
         setSheetOffset(window.innerHeight);
-        setTimeout(() => onClose(), 300);
+        setTimeout(() => onClose(), 200);
     };
 
     const cat = queryData('getCat', { id: poem.cat_id });
@@ -1066,15 +1103,15 @@ export default function DoostApp() {
 
     return (
       <div 
-        className={`fixed inset-0 bg-[#373232]/60 z-[9999] flex flex-col justify-end transition-opacity duration-300 ${isClosing ? 'opacity-0' : 'opacity-100'}`}
+        className={`fixed inset-0 bg-[#373232]/60 z-[9999] flex flex-col justify-end transition-opacity ${isClosing ? 'duration-200 opacity-0' : 'duration-300 opacity-100'}`}
         onClick={handleClose}
       >
-        <div 
+        <div
           className="sharebox bg-[#FAF4ED] rounded-t-3xl w-full max-w-lg mx-auto p-6 shadow-2xl pb-safe relative"
           onClick={(e) => e.stopPropagation()}
           style={{
              transform: `translateY(${sheetOffset}px)`,
-             transition: isDragging ? 'none' : 'transform 0.3s ease-out',
+             transition: isDragging ? 'none' : `transform ${isClosing ? '0.2s' : '0.3s'} ease-out`,
              ...(sheetOffset === 0 && !isClosing && !isDragging ? { animation: 'slideInBottomFull 300ms ease-out forwards' } : { animation: 'none' })
           }}
         >
@@ -1103,7 +1140,7 @@ export default function DoostApp() {
           
           <h3 className="share-title text-xl font-bold mb-4 text-[#35646A] border-b border-[#35646A]/10 pb-3">اشتراک‌گذاری شعر</h3>
           
-          <div className="share-preview bg-white/60 p-4 rounded-2xl text-sm text-[#373232] font-poem whitespace-pre-wrap max-h-[30vh] overflow-y-auto border border-[#35646A]/10 mb-6 shadow-inner hide-scrollbar">
+          <div className="share-preview bg-white/60 p-4 rounded-2xl text-sm text-[#373232] font-poem leading-[2.2] whitespace-pre-wrap max-h-[30vh] overflow-y-auto border border-[#35646A]/10 mb-6 shadow-inner hide-scrollbar">
             {textToShare}
           </div>
 
@@ -1164,14 +1201,15 @@ export default function DoostApp() {
       }
     };
 
-    const renderPoetCard = (poet) => {
+    const renderPoetCard = (poet, staggerIndex = null) => {
       const isSelected = selectedPoetNames.includes(poet.name);
       const tint = getPoetStyle(poet.id);
       return (
-        <button 
+        <button
           key={poet.id}
           onClick={(e) => handlePoetCardClick(e, poet)}
-          className={`w-full flex flex-row sm:flex-col items-center sm:justify-center border rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-sm active:scale-[0.98] transition-all h-[72px] sm:h-auto sm:aspect-square relative group select-none ${tint}`}
+          className={`w-full flex flex-row sm:flex-col items-center sm:justify-center border rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-sm active:scale-[0.98] transition-all h-[72px] sm:h-auto sm:aspect-square relative group select-none ${tint} ${staggerIndex !== null ? 'stagger-item' : ''}`}
+          style={staggerIndex !== null ? { animationDelay: `${Math.min(staggerIndex, 8) * 35}ms` } : undefined}
         >
           <span className="font-bold text-lg sm:text-xl tracking-wide ml-auto sm:ml-0">{poet.name}</span>
           <div className="mr-auto sm:mr-0 sm:mt-auto sm:absolute sm:top-4 sm:right-4 p-2 -m-2 sm:m-0 rounded-full">
@@ -1187,7 +1225,7 @@ export default function DoostApp() {
           title="" 
           showBack={false} 
           rightAction={
-             <button onClick={() => setIsDarkMode(!isDarkMode)} className="p-2 -mr-2 rounded-full hover:bg-white/10 active:bg-white/20 transition-colors relative z-50">
+             <button onClick={() => setIsDarkMode(!isDarkMode)} className="p-2.5 -mr-2.5 rounded-full hover:bg-white/10 active:bg-white/20 transition-colors relative z-50">
                 {isDarkMode ? <Sun size={24} /> : <Moon size={24} />}
              </button>
           }
@@ -1202,7 +1240,7 @@ export default function DoostApp() {
                  شاعران منتخب
               </h2>
               <div className="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-4">
-                {selectedPoets.map(poet => renderPoetCard(poet))}
+                {selectedPoets.map((poet, i) => renderPoetCard(poet, i))}
               </div>
             </div>
           )}
@@ -1214,7 +1252,7 @@ export default function DoostApp() {
             </h2>
             {Object.keys(groupedPoets).sort((a,b) => a.localeCompare(b, 'fa')).map(letter => (
               <div key={letter} className="mb-6">
-                 <h3 className="text-lg font-bold text-[#35646A]/50 mb-3 border-b border-[#35646A]/10 pb-1 px-1">
+                 <h3 className="text-lg font-bold text-[#35646A]/90 mb-3 border-b border-[#35646A]/10 pb-1 px-1">
                    {letter}
                  </h3>
                  <div className="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-4">
@@ -1231,7 +1269,7 @@ export default function DoostApp() {
                  navigateToPoemWithPath(p.id, p.title, p.cat_id);
               }
             }}
-            className="fixed fab-safe-bottom left-6 bg-[#A00A0F] text-[#FAF4ED] p-4 rounded-full shadow-lg active:scale-90 transition-transform z-40 flex items-center gap-2 border-2 border-white/20"
+            className="fixed fab-safe-bottom left-6 bg-[#A00A0F] text-[#FAF4ED] p-4 rounded-full shadow-lg active:scale-95 transition-transform z-40 flex items-center gap-2 border-2 border-white/20"
           >
             <Shuffle size={24} />
           </button>
@@ -1261,7 +1299,7 @@ export default function DoostApp() {
                       showFilters: true
                    }));
                    navigate('search');
-                 }} className="p-2 rounded-full hover:bg-white/10 active:bg-white/20">
+                 }} className="p-3 rounded-full hover:bg-white/10 active:bg-white/20">
                    <Search size={20} />
                  </button>
                  <button onClick={() => {
@@ -1269,7 +1307,7 @@ export default function DoostApp() {
                    if(p) {
                       navigateToPoemWithPath(p.id, p.title, p.cat_id);
                    }
-                 }} className="p-2 -mr-1 rounded-full hover:bg-white/10 active:bg-white/20">
+                 }} className="p-3 -mr-1.5 rounded-full hover:bg-white/10 active:bg-white/20">
                    <Shuffle size={20} />
                  </button>
               </div>
@@ -1278,11 +1316,11 @@ export default function DoostApp() {
           <Breadcrumbs />
         </div>
 
-        <div className="flex-1 overflow-y-auto view-scroll-container p-4 pb-[100px]">
+        <div className="flex-1 overflow-y-auto view-scroll-container p-4 pb-24">
           <div className="max-w-3xl mx-auto space-y-6">
             {subCats.length > 0 && (
               <div>
-                <h3 className="text-sm font-bold text-[#35646A]/70 mb-2 px-2">بخش‌ها</h3>
+                <h3 className="text-sm font-bold text-[#35646A]/90 mb-2 px-2">بخش‌ها</h3>
                 <div className="bg-white/80 backdrop-blur rounded-3xl overflow-hidden shadow-sm border border-[#35646A]/10">
                   {subCats.map((cat, idx) => (
                     <button 
@@ -1299,7 +1337,7 @@ export default function DoostApp() {
                       className={`w-full px-5 py-4 flex items-center justify-between active:bg-[#35646A]/5 transition-colors text-right ${idx !== subCats.length - 1 ? 'border-b border-[#35646A]/10' : ''}`}
                     >
                       <span className="font-bold text-[#373232] text-sm md:text-base">{cat.text}</span>
-                      <ChevronLeft size={18} className="text-[#35646A]/40 shrink-0" />
+                      <ChevronLeft size={18} className="text-[#35646A]/70 shrink-0" />
                     </button>
                   ))}
                 </div>
@@ -1308,7 +1346,7 @@ export default function DoostApp() {
 
             {poems.length > 0 && (
               <div>
-                <h3 className="text-sm font-bold text-[#35646A]/70 mb-2 px-2">اشعار</h3>
+                <h3 className="text-sm font-bold text-[#35646A]/90 mb-2 px-2">اشعار</h3>
                 <div className="bg-white/80 backdrop-blur rounded-3xl overflow-hidden shadow-sm border border-[#35646A]/10">
                   {poems.map((poem, idx) => (
                     <button 
@@ -1317,7 +1355,7 @@ export default function DoostApp() {
                       className={`w-full px-5 py-4 flex items-center justify-between active:bg-[#A00A0F]/5 transition-colors text-right ${idx !== poems.length - 1 ? 'border-b border-[#35646A]/10' : ''}`}
                     >
                       <span className="text-[#373232] font-semibold text-sm md:text-base">{poem.title}</span>
-                      <ChevronLeft size={16} className="text-[#35646A]/30 shrink-0" />
+                      <ChevronLeft size={16} className="text-[#35646A]/70 shrink-0" />
                     </button>
                   ))}
                 </div>
@@ -1325,7 +1363,7 @@ export default function DoostApp() {
             )}
             
             {subCats.length === 0 && poems.length === 0 && (
-              <div className="text-center text-[#373232]/50 py-16 font-semibold">
+              <div className="text-center text-[#373232]/75 py-16 font-semibold">
                 محتوایی در این بخش یافت نشد.
               </div>
             )}
@@ -1550,7 +1588,7 @@ export default function DoostApp() {
                 
                 {/* Mobile Dropdown */}
                 <div className="flex md:hidden">
-                   <button onClick={() => setShowMobileMenu(!showMobileMenu)} className="p-2 -mr-1 rounded-full active:bg-white/20 transition-colors relative z-50">
+                   <button onClick={() => setShowMobileMenu(!showMobileMenu)} className="p-3 -mr-1.5 rounded-full active:bg-white/20 transition-colors relative z-50">
                       <MoreVertical size={20} />
                    </button>
                    
@@ -1746,7 +1784,7 @@ export default function DoostApp() {
                   placeholder="جستجو در متن اشعار..."
                   className="w-full pl-4 pr-12 py-4 bg-white border border-[#35646A]/20 rounded-2xl focus:outline-none focus:border-[#35646A] focus:ring-1 focus:ring-[#35646A] transition-all text-[#373232] font-semibold shadow-sm"
                 />
-                <Search className="absolute right-4 top-4 text-[#35646A]/50" size={24} />
+                <Search className="absolute right-4 top-4 text-[#35646A]/70" size={24} />
               </div>
               <button disabled={isSearching} type="submit" className="bg-[#35646A] text-[#FAF4ED] px-6 rounded-2xl active:bg-[#35646A]/80 font-bold transition-colors shadow-md min-w-[80px] flex items-center justify-center">
                 {isSearching ? <Loader2 className="animate-spin text-white" size={20} /> : 'بگرد'}
@@ -1759,7 +1797,7 @@ export default function DoostApp() {
           <div className="max-w-3xl mx-auto space-y-4 pb-12">
             {hasSearched && (
               <>
-                <h3 className="text-sm font-bold text-[#35646A]/70 px-2 flex justify-between">
+                <h3 className="text-sm font-bold text-[#35646A]/90 px-2 flex justify-between">
                   <span>{results.length} نتیجه یافت شد</span>
                   {(selectedPoet !== 'all' || selectedBook !== 'all') && (
                      <span className="bg-[#35646A]/10 text-[#35646A] px-2 py-0.5 rounded text-[10px]">فیلتر اعمال شده</span>
@@ -1768,15 +1806,16 @@ export default function DoostApp() {
                 
                 <div className="space-y-3">
                   {results.map((res, i) => (
-                    <button 
-                      key={i} 
+                    <button
+                      key={i}
                       onClick={() => navigateToPoemWithPath(res.poem_id, res.poem_title, res.cat_id, term)}
-                      className="search-result w-full text-right p-5 rounded-3xl border border-[#35646A]/10 shadow-sm active:scale-[0.98] transition-all"
+                      className="search-result stagger-item w-full text-right p-5 rounded-3xl border border-[#35646A]/10 shadow-sm active:scale-[0.98] transition-all"
+                      style={{ animationDelay: `${Math.min(i, 8) * 35}ms` }}
                     >
                       <p className="font-poem text-lg md:text-xl text-[#373232] mb-4 leading-[2]">
                         ... <span className="bg-[#A00A0F]/10 text-[#A00A0F] px-1 rounded">{res.text}</span> ...
                       </p>
-                      <div className="search-badge flex flex-wrap items-center text-[10px] md:text-xs text-[#373232]/60 gap-1 md:gap-2 font-bold self-start inline-flex px-3 py-2 rounded-lg border border-[#35646A]/5">
+                      <div className="search-badge flex flex-wrap items-center text-[10px] md:text-xs text-[#373232]/75 gap-1 md:gap-2 font-bold self-start inline-flex px-3 py-2 rounded-lg border border-[#35646A]/5">
                         <span className="text-[#35646A]">{res.poet_name}</span>
                         <ChevronLeft size={10} className="opacity-50" />
                         <span>{res.cat_name}</span>
@@ -1787,7 +1826,7 @@ export default function DoostApp() {
                   ))}
                   
                   {results.length === 0 && (
-                    <div className="text-center py-16 text-[#373232]/40 font-bold bg-white/50 rounded-3xl border border-[#35646A]/10 border-dashed">
+                    <div className="text-center py-16 text-[#373232]/75 font-bold bg-white/50 rounded-3xl border border-[#35646A]/10 border-dashed">
                       نتیجه‌ای برای «{term}» یافت نشد.
                     </div>
                   )}
@@ -1848,7 +1887,7 @@ export default function DoostApp() {
                    >
                      <div>
                        <h3 className="font-bold text-[#373232] text-lg mb-1">{fav.title}</h3>
-                       <span className="text-xs text-[#35646A]/70 font-semibold flex items-center gap-1">
+                       <span className="text-xs text-[#35646A]/90 font-semibold flex items-center gap-1">
                           <BookOpen size={12} /> 
                           {[fav.book_name, fav.section_name].filter(Boolean).join('، ') || 'بدون دسته‌بندی'}
                        </span>
@@ -1876,7 +1915,7 @@ export default function DoostApp() {
                 <div className="w-24 h-24 bg-white rounded-full flex items-center justify-center mb-6 shadow-sm border border-[#35646A]/5">
                    <Heart size={40} className="text-[#35646A]/20" />
                 </div>
-                <p className="text-[#373232]/60 font-bold text-lg">هیچ شعری را هنوز نشان نکرده‌اید.</p>
+                <p className="text-[#373232]/75 font-bold text-lg">هیچ شعری را هنوز نشان نکرده‌اید.</p>
               </div>
             ) : (
               <div className="space-y-3">
@@ -1888,7 +1927,7 @@ export default function DoostApp() {
                   >
                     <div>
                       <h3 className="font-bold text-[#373232] text-lg mb-1">{poet.name}</h3>
-                      <span className="text-xs text-[#35646A]/70 font-semibold flex items-center gap-1">
+                      <span className="text-xs text-[#35646A]/90 font-semibold flex items-center gap-1">
                          <BookOpen size={12} /> {poet.count} شعر نشان شده
                       </span>
                     </div>
@@ -1913,7 +1952,7 @@ export default function DoostApp() {
           <div className="w-48 h-48 bg-[rgb(250 244 237 / 43%)] rounded-3xl shadow-2xl flex items-center justify-center mb-8 rotate-3">
             <img src="/logo.png" alt="Logo" />
           </div>
-          <p className="text-[#FAF4ED]/70 font-medium mb-12">گنجینه شعر و ادب پارسی</p>
+          <p className="text-[#FAF4ED]/85 font-medium mb-12">گنجینه شعر و ادب پارسی</p>
           <Loader2 className="animate-spin text-[#FAF4ED]/50" size={32} />
         </div>
       </div>
