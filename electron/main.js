@@ -9,6 +9,12 @@ const fs = require('fs');
 // the Vite dev server or a real web deployment.
 const DIST_DIR = path.join(__dirname, 'app');
 
+// Fixed, not random: localStorage (favorites, dark mode, etc.) is scoped per-origin,
+// which includes the port. A random port every launch meant every launch was a brand
+// new origin with empty storage - that's why nothing ever persisted. Pairing this with
+// requestSingleInstanceLock below means only one process ever binds it.
+const SERVER_PORT = 47893;
+
 const MIME_TYPES = {
   '.html': 'text/html; charset=utf-8',
   '.js': 'application/javascript',
@@ -43,7 +49,7 @@ function startServer() {
         res.end(data);
       });
     });
-    server.listen(0, '127.0.0.1', () => resolve(server.address().port));
+    server.listen(SERVER_PORT, '127.0.0.1', () => resolve(server.address().port));
   });
 }
 
@@ -67,12 +73,27 @@ async function createWindow() {
   mainWindow.loadURL(`http://127.0.0.1:${port}`);
 }
 
-app.whenReady().then(createWindow);
+// Only one process should ever bind SERVER_PORT. If a second launch happens while
+// the app is already running, hand off to the existing window instead of starting
+// a second server that would just fail to bind the port.
+const gotLock = app.requestSingleInstanceLock();
+if (!gotLock) {
+  app.quit();
+} else {
+  app.on('second-instance', () => {
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.focus();
+    }
+  });
 
-app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') app.quit();
-});
+  app.whenReady().then(createWindow);
 
-app.on('activate', () => {
-  if (BrowserWindow.getAllWindows().length === 0) createWindow();
-});
+  app.on('window-all-closed', () => {
+    if (process.platform !== 'darwin') app.quit();
+  });
+
+  app.on('activate', () => {
+    if (BrowserWindow.getAllWindows().length === 0) createWindow();
+  });
+}
