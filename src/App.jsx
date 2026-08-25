@@ -68,6 +68,10 @@ const fontStyles = `
   
   .pb-safe { padding-bottom: env(safe-area-inset-bottom, 16px); }
   .pt-safe { padding-top: env(safe-area-inset-top, 0px); }
+  /* The bottom nav's own row already reads as a clear boundary above the home-indicator
+     gesture area, so it doesn't need the FULL safe-area inset on top of that — using it
+     verbatim left a noticeably tall empty band under the icons on notched iPhones. */
+  .nav-safe-bottom { padding-bottom: max(env(safe-area-inset-bottom, 12px) - 14px, 6px); }
   .fab-safe-bottom { bottom: calc(6rem + env(safe-area-inset-bottom, 0px)); }
 
   /* --- CUSTOM ANIMATIONS --- */
@@ -534,6 +538,29 @@ export default function DoostApp() {
 
   useEffect(() => { swipeStateRef.current = swipeState; }, [swipeState]);
 
+  // Reported on iOS: after selecting poem text (for copy), tapping elsewhere doesn't
+  // dismiss the selection like it normally would. Rather than rely on the WKWebView's
+  // native dismiss-on-tap behavior (which is what's misbehaving), explicitly clear a
+  // lingering selection on the next tap. Guarded by a short delay since
+  // selectionchange fires the instant a selection is CREATED — without it, the very
+  // tap/drag that makes a selection would immediately wipe it out again.
+  const lastSelectionChangeRef = useRef(0);
+  useEffect(() => {
+    const onSelectionChange = () => {
+      const sel = window.getSelection();
+      if (sel && !sel.isCollapsed) lastSelectionChangeRef.current = Date.now();
+    };
+    document.addEventListener('selectionchange', onSelectionChange);
+    return () => document.removeEventListener('selectionchange', onSelectionChange);
+  }, []);
+
+  const clearStaleSelection = () => {
+    const sel = window.getSelection();
+    if (sel && !sel.isCollapsed && Date.now() - lastSelectionChangeRef.current > 300) {
+      sel.removeAllRanges();
+    }
+  };
+
   const activePoemId = currentView.name === 'poem' ? currentView.params.id : null;
 
   // Auto-scroll logic for highlighted search terms
@@ -978,6 +1005,38 @@ export default function DoostApp() {
     return () => el.removeEventListener('touchmove', onTouchMove);
   }, [poemNav.nextPoem, poemNav.prevPoem]);
 
+  // Slides to the given poem the same way a completed swipe does, then swaps it in.
+  // Shared by the touch gesture and by desktop keyboard navigation (arrow keys) below,
+  // since a mouse/keyboard-only desktop session has no swipe gesture to use at all.
+  const swapToPoem = (targetPoem, dir) => {
+    if (!targetPoem || swipeStateRef.current.isAnimating) return;
+    setSwipeState({ offset: dir * window.innerWidth, isDragging: false, isSnapping: false, isAnimating: true });
+    setTimeout(() => {
+      setSwipeState({ offset: 0, isDragging: false, isSnapping: true, isAnimating: false });
+      setViewStack(prev => {
+        const newStack = [...prev];
+        newStack[newStack.length - 1] = {
+          ...newStack[newStack.length - 1],
+          params: { ...newStack[newStack.length - 1].params, id: targetPoem.id, title: targetPoem.title }
+        };
+        return newStack;
+      });
+    }, 300);
+  };
+
+  // Desktop/keyboard equivalent of the swipe gesture: RTL convention here (matching the
+  // back-chevron and swipe directions elsewhere) is right = back/previous, left = forward/next.
+  useEffect(() => {
+    if (currentView.name !== 'poem') return;
+    const onKeyDown = (e) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      if (e.key === 'ArrowLeft') swapToPoem(poemNav.nextPoem, 1);
+      else if (e.key === 'ArrowRight') swapToPoem(poemNav.prevPoem, -1);
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [currentView.name, poemNav.nextPoem, poemNav.prevPoem]);
+
   // --- NATIVE APP COMPONENTS ---
   const AppBar = ({ title, showBack, rightAction, onBack }) => (
     <header className="shrink-0 text-[#FAF4ED] shadow-md px-4 py-3 pt-safe flex items-center justify-between z-40 relative">
@@ -1028,7 +1087,7 @@ export default function DoostApp() {
   };
 
   const BottomNav = () => (
-    <nav className="fixed bottom-0 w-full bg-[#FAF4ED]/95 backdrop-blur-md border-t border-[#35646A]/10 px-6 py-2 pb-safe flex justify-between items-center z-50 shadow-[0_-4px_15px_rgba(55,50,50,0.15)]">
+    <nav className="fixed bottom-0 w-full bg-[#FAF4ED]/95 backdrop-blur-md border-t border-[#35646A]/10 px-6 py-2 nav-safe-bottom flex justify-between items-center z-50 shadow-[0_-4px_15px_rgba(55,50,50,0.15)]">
       <button onClick={() => { setViewStack([{name: 'home', params: {}}]); setFavSelectedPoetId(null); }} className={`flex flex-col items-center p-2 rounded-xl transition-colors ${currentView.name === 'home' ? 'active-nav' : 'text-[#373232]/75'}`}>
         <Home size={24} className={currentView.name === 'home' ? 'fill-[#A00A0F]/10' : ''} />
         <span className="text-[10px] mt-1 font-bold">خانه</span>
@@ -1101,6 +1160,20 @@ export default function DoostApp() {
       } catch (e) { console.error("Copy failed", e); }
     };
 
+    const canShare = !!(window?.Capacitor?.Plugins?.Share || navigator.share);
+
+    const shareToApps = async () => {
+      try {
+        if (window?.Capacitor?.isNativePlatform?.()) {
+          await window.Capacitor.Plugins.Share.share({ text: textToShare, dialogTitle: 'اشتراک‌گذاری شعر' });
+        } else if (navigator.share) {
+          await navigator.share({ text: textToShare });
+        }
+      } catch (e) {
+        if (e?.name !== 'AbortError') console.error('Share failed', e);
+      }
+    };
+
     return (
       <div 
         className={`fixed inset-0 bg-[#373232]/60 z-[9999] flex flex-col justify-end transition-opacity ${isClosing ? 'duration-200 opacity-0' : 'duration-300 opacity-100'}`}
@@ -1145,12 +1218,22 @@ export default function DoostApp() {
           </div>
 
           <div className="flex gap-3 mb-4">
-            <button onClick={handleClose} className="px-4 py-3 close-btn text-[#373232] bg-[#373232]/5 rounded-xl active:bg-[#373232]/10 transition-colors w-1/3 font-bold">
+            <button onClick={handleClose} className="px-4 py-3 close-btn text-[#373232] bg-[#373232]/5 rounded-xl active:bg-[#373232]/10 transition-colors font-bold">
               بستن
             </button>
-            <button onClick={copyToClipboard} className="px-4 py-3 bg-[#35646A] text-[#FAF4ED] rounded-xl active:bg-[#35646A]/80 flex-1 flex justify-center items-center gap-2 transition-colors font-bold shadow-md">
-              {copied ? <Check size={20} /> : <Copy size={20} />}
-              {copied ? 'کپی شد' : 'کپی در کلیپ‌بورد'}
+            {canShare && (
+              <button onClick={copyToClipboard} title="کپی در کلیپ‌بورد" className="px-4 py-3 close-btn text-[#373232] bg-[#373232]/5 rounded-xl active:bg-[#373232]/10 transition-colors">
+                {copied ? <Check size={20} /> : <Copy size={20} />}
+              </button>
+            )}
+            <button
+              onClick={canShare ? shareToApps : copyToClipboard}
+              className="px-4 py-3 bg-[#35646A] text-[#FAF4ED] rounded-xl active:bg-[#35646A]/80 flex-1 flex justify-center items-center gap-2 transition-colors font-bold shadow-md"
+            >
+              {canShare
+                ? (<><Share2 size={20} /> اشتراک‌گذاری</>)
+                : (copied ? (<><Check size={20} /> کپی شد</>) : (<><Copy size={20} /> کپی در کلیپ‌بورد</>))
+              }
             </button>
           </div>
         </div>
@@ -1232,7 +1315,7 @@ export default function DoostApp() {
         />
         
         <div className="p-4 md:p-6 max-w-4xl mx-auto">
-          
+
           {selectedPoets.length > 0 && (
             <div className="mb-8">
               <h2 className="text-lg font-bold text-[#35646A] flex items-center gap-2 mb-4">
@@ -1323,8 +1406,8 @@ export default function DoostApp() {
                 <h3 className="text-sm font-bold text-[#35646A]/90 mb-2 px-2">بخش‌ها</h3>
                 <div className="bg-white/80 backdrop-blur rounded-3xl overflow-hidden shadow-sm border border-[#35646A]/10">
                   {subCats.map((cat, idx) => (
-                    <button 
-                      key={cat.id} 
+                    <button
+                      key={cat.id}
                       onClick={() => {
                          let newCtx = { ...ctx };
                          if (!newCtx.book_id || newCtx.book_id === 'all') {
@@ -1349,8 +1432,8 @@ export default function DoostApp() {
                 <h3 className="text-sm font-bold text-[#35646A]/90 mb-2 px-2">اشعار</h3>
                 <div className="bg-white/80 backdrop-blur rounded-3xl overflow-hidden shadow-sm border border-[#35646A]/10">
                   {poems.map((poem, idx) => (
-                    <button 
-                      key={poem.id} 
+                    <button
+                      key={poem.id}
                       onClick={() => navigateToPoemWithPath(poem.id, poem.title, id)}
                       className={`w-full px-5 py-4 flex items-center justify-between active:bg-[#A00A0F]/5 transition-colors text-right ${idx !== poems.length - 1 ? 'border-b border-[#35646A]/10' : ''}`}
                     >
@@ -1396,33 +1479,11 @@ export default function DoostApp() {
         if (swipeState.isAnimating) return;
         touchVerticalRef.current = false;
         const threshold = window.innerWidth / 3;
-        
+
         if (swipeState.offset > threshold && nextPoem) {
-            setSwipeState({ offset: window.innerWidth, isDragging: false, isSnapping: false, isAnimating: true });
-            setTimeout(() => {
-                setSwipeState({ offset: 0, isDragging: false, isSnapping: true, isAnimating: false });
-                setViewStack(prev => {
-                    const newStack = [...prev];
-                    newStack[newStack.length - 1] = { 
-                        ...newStack[newStack.length - 1], 
-                        params: { ...newStack[newStack.length - 1].params, id: nextPoem.id, title: nextPoem.title } 
-                    };
-                    return newStack;
-                });
-            }, 300);
+            swapToPoem(nextPoem, 1);
         } else if (swipeState.offset < -threshold && prevPoem) {
-            setSwipeState({ offset: -window.innerWidth, isDragging: false, isSnapping: false, isAnimating: true });
-            setTimeout(() => {
-                setSwipeState({ offset: 0, isDragging: false, isSnapping: true, isAnimating: false });
-                setViewStack(prev => {
-                    const newStack = [...prev];
-                    newStack[newStack.length - 1] = { 
-                        ...newStack[newStack.length - 1], 
-                        params: { ...newStack[newStack.length - 1].params, id: prevPoem.id, title: prevPoem.title } 
-                    };
-                    return newStack;
-                });
-            }, 300);
+            swapToPoem(prevPoem, -1);
         } else {
             setSwipeState({ offset: 0, isDragging: false, isSnapping: false, isAnimating: false });
         }
@@ -1803,7 +1864,7 @@ export default function DoostApp() {
                      <span className="bg-[#35646A]/10 text-[#35646A] px-2 py-0.5 rounded text-[10px]">فیلتر اعمال شده</span>
                   )}
                 </h3>
-                
+
                 <div className="space-y-3">
                   {results.map((res, i) => (
                     <button
@@ -1961,7 +2022,7 @@ export default function DoostApp() {
 
   // --- MAIN APP STRUCTURE ---
   return (
-    <div className="h-[100dvh] versesbox bg-[#FAF4ED] relative w-full max-w-md md:max-w-none mx-auto shadow-2xl md:shadow-none overflow-hidden flex flex-col">
+    <div onClick={clearStaleSelection} className="h-[100dvh] versesbox bg-[#FAF4ED] relative w-full max-w-md md:max-w-none mx-auto shadow-2xl md:shadow-none overflow-hidden flex flex-col">
       <main className="flex-1 w-full relative bg-transparent overflow-hidden">
         {currentView.name === 'home' && renderHomeView()}
         {currentView.name === 'category' && renderCategoryView(currentView.params)}
@@ -1969,9 +2030,9 @@ export default function DoostApp() {
         {currentView.name === 'search' && renderSearchView()}
         {currentView.name === 'favorites' && renderFavoritesView()}
       </main>
-      
+
       <BottomNav />
-      
+
       {shareData && <ShareBottomSheet poem={shareData.poem} verses={shareData.verses} onClose={() => setShareData(null)} />}
     </div>
   );
