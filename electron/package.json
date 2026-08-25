@@ -17,19 +17,18 @@
     "productName": "Doost",
     "asar": true,
     "directories": {
-      "output": "dist-desktop"
+      "output": "release"
     },
     "files": [
       "main.js",
       "app/**/*"
     ],
     "win": {
-      "target": ["nsis"],
+      "target": ["nsis", "zip"],
       "icon": "build/icon.png"
     },
     "nsis": {
-      "oneClick": false,
-      "allowToChangeInstallationDirectory": true
+      "oneClick": true
     },
     "linux": {
       "target": ["AppImage", "deb"],
