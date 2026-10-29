@@ -361,13 +361,21 @@ async function candidates(q, scope) {
   // Every word but the last is complete; the last may still be typed (prefix).
   const usable = words
     .map((w, i) => ({ w, prefix: i === words.length - 1 }))
-    .filter(({ w, prefix }) => w.length > 1 && (prefix || !stop.has(w)));
+    // Stop-words aren't indexed, so they can't narrow the candidates (even as a prefix: the
+    // expansion would miss poems containing just the word). The phrase check enforces them.
+    .filter(({ w }) => w.length > 1 && !stop.has(w));
   let list = null;
   if (usable.length) {
     const lists = await Promise.all(usable.map(({ w, prefix }) => postingsFor(w, prefix)));
     lists.sort((a, b) => a.length - b.length);
     list = lists[0];
     for (let i = 1; i < lists.length && list.length; i++) list = intersect(list, lists[i]);
+  } else if (normalizeCompact(q).length >= 2) {
+    // Only very common words («دل», «یک»…): they match almost every poem, so scanning in
+    // reading order with the phrase check finds results immediately.
+    const [from, to] = scopeRange(scope);
+    list = new Uint32Array(to - from);
+    for (let i = 0; i < list.length; i++) list[i] = from + i;
   }
   if (list) {
     const [from, to] = scopeRange(scope);

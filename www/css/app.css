@@ -1225,3 +1225,150 @@ svg.sprite {
 html {
   overflow: hidden;
 }
+
+/* ------------------------------------------------------------------ phone vs wide layouts */
+
+@media (min-width: 900px) {
+  .narrow-only {
+    display: none !important;
+  }
+  /* Wide poem pages have their actions under the title. */
+  body.on-poem #btn-settings {
+    display: none;
+  }
+}
+@media (max-width: 899px) {
+  .wide-only {
+    display: none !important;
+  }
+}
+
+/* ------------------------------------------------------------------ verse sizing */
+
+/* Phones: size from the screen width so a typical half-line fits on one line; fitVerses()
+   shrinks the rare longer beyt and lets only extreme ones wrap. */
+.verses {
+  font-size: calc(clamp(1rem, 4.4vw, 1.25rem) * var(--poem-scale));
+  padding: 20px 14px;
+}
+@media (min-width: 720px) {
+  .verses {
+    font-size: calc(1.25rem * var(--poem-scale));
+    padding: 24px 22px;
+  }
+}
+@media (max-width: 719px) {
+  .beyt .m1 {
+    padding-left: 7%;
+  }
+  .beyt .m2 {
+    padding-right: 7%;
+  }
+}
+.beyt p,
+.center p,
+.c2 p,
+.single p {
+  white-space: nowrap;
+}
+.b.wrap p {
+  white-space: normal;
+}
+
+/* ------------------------------------------------------------------ menu */
+
+.menu {
+  position: fixed;
+  z-index: 25;
+  min-width: 220px;
+  background: var(--surface);
+  color: var(--text);
+  border-radius: 14px;
+  box-shadow: var(--shadow-lg);
+  padding: 6px;
+  animation: fade 0.15s;
+}
+.menu button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  border: 0;
+  background: none;
+  padding: 11px 12px;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  text-align: start;
+}
+.menu button:hover {
+  background: var(--surface-2);
+}
+.menu svg {
+  width: 18px;
+  height: 18px;
+  color: var(--accent);
+}
+
+/* ------------------------------------------------------------------ share sheet */
+
+.share-actions {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-top: 12px;
+}
+.share-act {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  border-radius: 14px;
+  padding: 14px 6px;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+.share-act svg {
+  color: var(--accent);
+}
+.share-act:hover {
+  border-color: var(--accent);
+}
+.share-act:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+/* ------------------------------------------------------------------ poet card palette */
+
+.poet {
+  background: hsl(var(--h, 186) 45% 45% / 0.08);
+  border-color: hsl(var(--h, 186) 40% 40% / 0.16);
+  color: hsl(var(--h, 186) 55% 28%);
+}
+.poet .star {
+  color: hsl(var(--h, 186) 40% 40% / 0.35);
+}
+:root[data-theme='dark'] .poet {
+  background: hsl(var(--h, 186) 22% 14%);
+  border-color: hsl(var(--h, 186) 22% 21%);
+  color: hsl(var(--h, 186) 45% 78%);
+}
+:root[data-theme='dark'] .poet .star {
+  color: hsl(var(--h, 186) 30% 60% / 0.4);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .poet {
+    background: hsl(var(--h, 186) 22% 14%);
+    border-color: hsl(var(--h, 186) 22% 21%);
+    color: hsl(var(--h, 186) 45% 78%);
+  }
+  :root:not([data-theme='light']) .poet .star {
+    color: hsl(var(--h, 186) 30% 60% / 0.4);
+  }
+}
+.poet .star.on {
+  color: var(--heart) !important;
+}

@@ -11,6 +11,7 @@ const SHELL_FILES = [
   'js/worker.js',
   'js/normalize.js',
   'js/store.js',
+  'js/share.js',
   'js/platform.js',
   'js/inflate.js',
   'js/boot.js',

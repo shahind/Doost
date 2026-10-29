@@ -84,7 +84,9 @@ function crumbs(catIdx, { includeLast = true } = {}) {
   for (const c of inner) parts.push(`<a href="#/cat/${c.id}">${esc(c.title)}</a>`);
   return `<nav class="crumbs">${parts.join(icon('next'))}</nav>`;
 }
-const poetTint = (p) => `t${p.id % 4}`;
+// Poet cards cycle through a palette of hues (tinted per theme in CSS).
+const HUES = [186, 357, 32, 210, 95, 290, 14, 160, 245, 330, 48, 120];
+const poetTint = (p) => `--h:${HUES[p.id % HUES.length]}`;
 
 // ------------------------------------------------------------------ theme & settings
 
@@ -105,6 +107,7 @@ function applySettings() {
     sb?.setStyle({ style: 'DARK' }).catch(() => {}); // light icons on the teal bar
     sb?.setBackgroundColor({ color: dark ? '#16282a' : '#35646a' }).catch(() => {});
   }
+  refit();
 }
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applySettings);
 
@@ -149,6 +152,9 @@ function route() {
   cleanup?.();
   cleanup = null;
   closeSheet();
+  closeMenu();
+  el.actions.onclick = null;
+  document.body.classList.remove('on-poem');
   const [path, qs] = hash.slice(1).split('?');
   const params = new URLSearchParams(qs || '');
   const [kind, id] = path.split('/').filter(Boolean);
@@ -183,7 +189,7 @@ function showHome() {
     groups.get(l).push(p);
   }
   const card = (p) => `
-    <div class="poet ${poetTint(p)}" data-href="#/poet/${p.id}" role="link" tabindex="0">
+    <div class="poet" style="${poetTint(p)}" data-href="#/poet/${p.id}" role="link" tabindex="0">
       <span class="pn">${esc(p.name)}<span class="pc">${fa(p.poemCount)} شعر</span></span>
       <button class="star ${store.isSelected(p.name) ? 'on' : ''}" data-star="${esc(p.name)}" aria-label="منتخب">${icon('star')}</button>
     </div>`;
@@ -222,7 +228,8 @@ function showHome() {
     const letter = e.target.closest('[data-letter]');
     if (letter) {
       e.preventDefault();
-      document.getElementById('L-' + letter.dataset.letter)?.scrollIntoView({ behavior: 'smooth' });
+      const head = document.getElementById('L-' + letter.dataset.letter);
+      if (head) el.view.scrollTo({ top: el.view.scrollTop + head.getBoundingClientRect().top - el.view.getBoundingClientRect().top - 8, behavior: 'smooth' });
       return;
     }
     if (e.target.closest('#fab')) return randomPoem();
@@ -366,6 +373,111 @@ function verseBlocks(verses, cq) {
   return html;
 }
 
+// Keep each beyt on one line: measure every half-line and shrink the beyt just enough
+// (both half-lines together, so they stay the same size). Only extreme lines wrap.
+const MIN_FIT = 0.72;
+function fitVerses(root) {
+  if (!root?.isConnected) return;
+  const blocks = [...root.querySelectorAll('.beyt, .center, .c2, .single')];
+  for (const b of blocks) {
+    b.style.fontSize = '';
+    b.classList.remove('wrap');
+  }
+  const ratios = blocks.map((b) => {
+    let r = 1;
+    for (const p of b.children) if (p.tagName === 'P' && p.scrollWidth > p.clientWidth) r = Math.min(r, p.clientWidth / p.scrollWidth);
+    return r;
+  });
+  blocks.forEach((b, i) => {
+    const r = ratios[i] * 0.98;
+    if (ratios[i] >= 1) return;
+    if (r >= MIN_FIT) b.style.fontSize = r.toFixed(3) + 'em';
+    else {
+      b.style.fontSize = MIN_FIT + 'em';
+      b.classList.add('wrap');
+    }
+  });
+}
+let fitTimer;
+const refit = () => {
+  clearTimeout(fitTimer);
+  fitTimer = setTimeout(() => fitVerses($('#verses')), 80);
+};
+window.addEventListener('resize', refit);
+document.fonts?.ready.then(refit);
+
+// Small dropdown menu anchored to a button.
+let menuEl = null;
+function closeMenu() {
+  menuEl?.remove();
+  menuEl = null;
+}
+function openMenu(anchor, items) {
+  if (menuEl) return closeMenu();
+  menuEl = document.createElement('div');
+  menuEl.className = 'menu';
+  menuEl.innerHTML = items.map(([label], i) => `<button data-i="${i}">${label}</button>`).join('');
+  document.body.append(menuEl);
+  const r = anchor.getBoundingClientRect();
+  menuEl.style.top = `${r.bottom + 6}px`;
+  menuEl.style.left = `${Math.max(8, r.left)}px`;
+  menuEl.onclick = (e) => {
+    const b = e.target.closest('[data-i]');
+    if (!b) return;
+    const fn = items[+b.dataset.i][1];
+    closeMenu();
+    fn();
+  };
+  setTimeout(() => document.addEventListener('click', closeMenu, { once: true }), 0);
+}
+
+// Share sheet: text preview, copy, system share, and share as picture.
+function openShareSheet(spec) {
+  const text = `${spec.verses.map((v) => v[1]).join('\n')}\n\n${spec.poet}، ${spec.beyt ? '' : spec.section + '، '}${spec.title}\nارسال شده از دوست`;
+  openSheet(
+    `<h3>${spec.beyt ? 'اشتراک‌گذاری بیت' : 'اشتراک‌گذاری شعر'}</h3>
+     <div class="share-preview">${esc(text)}</div>
+     <div class="share-actions">
+       <button class="share-act" data-s="copy">${icon('copy')}<span>رونوشت متن</span></button>
+       <button class="share-act" data-s="text">${icon('share')}<span>اشتراک متن</span></button>
+       <button class="share-act" data-s="image">${icon('image')}<span>اشتراک تصویر</span></button>
+     </div>
+     <div class="sheet-row"><button class="btn ghost" data-close>بستن</button></div>`,
+    (s) => {
+      s.onclick = async (e) => {
+        if (e.target.closest('[data-close]')) return closeSheet();
+        const act = e.target.closest('[data-s]');
+        if (!act) return;
+        if (act.dataset.s === 'copy') {
+          await copyText(text);
+          toast('متن رونوشت شد');
+          closeSheet();
+        } else if (act.dataset.s === 'text') {
+          const r = await shareText(spec.title, text);
+          if (r === 'copied') toast('متن رونوشت شد');
+          if (r !== 'cancelled') closeSheet();
+        } else if (act.dataset.s === 'image') {
+          act.disabled = true;
+          act.querySelector('span').textContent = 'در حال ساختن تصویر…';
+          try {
+            const { renderPoemImage, shareImage } = await import('./share.js');
+            const blob = await renderPoemImage(spec);
+            const r = await shareImage(blob, `doost-${Date.now()}.png`, spec.title);
+            if (r === 'saved') toast('تصویر ذخیره شد');
+            if (r !== 'cancelled') closeSheet();
+          } catch (err) {
+            toast('ساختن تصویر ممکن نشد');
+          } finally {
+            act.disabled = false;
+            const label = act.querySelector('span');
+            if (label) label.textContent = 'اشتراک تصویر';
+          }
+        }
+      };
+    },
+  );
+}
+
 function poemContext(p) {
   const path = catPath(p.catIdx);
   const poet = poets[path[0].poetIdx];
@@ -401,23 +513,26 @@ async function showPoem(id, params) {
   const q = params.get('q') || '';
   const cq = normalizeCompact(q);
   const isFav = store.isFav(p.id);
+  // Phones: favorite / share / ⋮ menu in the top bar. Wide screens: buttons under the title.
   setHeader({
     title: p.title,
-    actions: `<button class="icon-btn ${isFav ? 'on' : ''}" id="act-fav" aria-label="نشان" title="نشان">${icon('heart')}</button>
-              <button class="icon-btn" id="act-share" aria-label="اشتراک‌گذاری" title="اشتراک‌گذاری">${icon('share')}</button>`,
+    actions: `<button class="icon-btn narrow-only ${isFav ? 'on' : ''}" data-act="fav" id="act-fav" aria-label="نشان" title="نشان">${icon('heart')}</button>
+              <button class="icon-btn narrow-only" data-act="share" aria-label="اشتراک‌گذاری" title="اشتراک‌گذاری">${icon('share')}</button>
+              <button class="icon-btn narrow-only" data-act="menu" aria-label="بیشتر" title="بیشتر">${icon('more')}</button>`,
   });
+  document.body.classList.add('on-poem');
   el.view.innerHTML = `
     <div class="page poem ${dir ? 'slide-' + dir : ''}">
       ${crumbs(p.catIdx)}
       <header class="poem-head">
         <h2>${esc(p.title)}</h2>
         <div class="by">${esc(poet.name)}</div>
-        <div class="poem-actions">
+        <div class="poem-actions wide-only">
           <button class="chip-btn ${isFav ? 'on' : ''}" data-act="fav">${icon('heart')} <span>${isFav ? 'نشان‌شده' : 'نشان'}</span></button>
           <button class="chip-btn" data-act="share">${icon('share')} اشتراک</button>
           <button class="chip-btn" data-act="copy">${icon('copy')} رونوشت</button>
           <a class="chip-btn" href="#/search?cat=${cats[p.catIdx].id}">${icon('search')} جستجو در این بخش</a>
-          <button class="chip-btn" data-act="font">${icon('text')} اندازهٔ متن</button>
+          <button class="chip-btn" data-act="font">${icon('settings')} تنظیمات</button>
         </div>
       </header>
       <article class="verses" id="verses">${verseBlocks(p.verses, cq)}</article>
@@ -429,38 +544,47 @@ async function showPoem(id, params) {
 
   const toggleFav = () => {
     const on = store.toggleFav(fav);
-    $('#act-fav').classList.toggle('on', on);
-    const chip = el.view.querySelector('[data-act="fav"]');
-    chip.classList.toggle('on', on);
-    chip.querySelector('span').textContent = on ? 'نشان‌شده' : 'نشان';
+    document.querySelectorAll('[data-act="fav"]').forEach((b) => b.classList.toggle('on', on));
+    const label = el.view.querySelector('[data-act="fav"] span');
+    if (label) label.textContent = on ? 'نشان‌شده' : 'نشان';
     toast(on ? 'به نشان‌ها افزوده شد' : 'از نشان‌ها برداشته شد');
   };
-  const share = async () => {
-    if ((await shareText(p.title, poemText(p, p.verses))) === 'copied') toast('متن شعر رونوشت شد');
-  };
-  $('#act-fav').onclick = toggleFav;
-  $('#act-share').onclick = share;
+  const sharePoem = () => openShareSheet({ title: p.title, poet: poet.name, section: cats[p.catIdx].title, verses: p.verses });
 
-  const versesEl = $('#verses');
-  el.view.onclick = async (e) => {
-    const act = e.target.closest('[data-act]')?.dataset.act;
+  const onAct = async (act, target) => {
     if (act === 'fav') return toggleFav();
-    if (act === 'share') return share();
+    if (act === 'share') return sharePoem();
     if (act === 'copy') {
       await copyText(poemText(p, p.verses));
       return toast('متن شعر رونوشت شد');
     }
     if (act === 'font') return openSettings();
+    if (act === 'menu')
+      return openMenu(target, [
+        [icon('search') + ' جستجو در این بخش', () => (location.hash = `#/search?cat=${cats[p.catIdx].id}`)],
+        [icon('shuffle') + ' شعر تصادفی از این بخش', () => randomPoem({ cat: p.catIdx })],
+        [icon('feather') + ' صفحهٔ ' + esc(poet.name), () => (location.hash = `#/poet/${poet.id}`)],
+      ]);
+  };
+  el.actions.onclick = (e) => {
+    const b = e.target.closest('[data-act]');
+    if (b) onAct(b.dataset.act, b);
+  };
+
+  const versesEl = $('#verses');
+  el.view.onclick = async (e) => {
+    const actBtn = e.target.closest('[data-act]');
+    if (actBtn) return onAct(actBtn.dataset.act, actBtn);
     const tool = e.target.closest('[data-vt]');
     if (tool) {
       const b = tool.closest('.b');
       const k = +b.dataset.v;
-      const lines = p.verses.slice(k, k + +b.dataset.n).map((v) => v[1]);
-      const text = `${lines.join('\n')}\n\n${poet.name}، ${p.title}\nارسال شده از دوست`;
+      const verses = p.verses.slice(k, k + +b.dataset.n);
+      const text = `${verses.map((v) => v[1]).join('\n')}\n\n${poet.name}، ${p.title}\nارسال شده از دوست`;
       if (tool.dataset.vt === 'copy') {
         await copyText(text);
         toast('بیت رونوشت شد');
-      } else if ((await shareText(p.title, text)) === 'copied') toast('بیت رونوشت شد');
+      } else openShareSheet({ title: p.title, poet: poet.name, section: cats[p.catIdx].title, verses, beyt: true });
       clearVerseTools();
       return;
     }
@@ -488,10 +612,16 @@ async function showPoem(id, params) {
   let focus = v != null ? [...versesEl.querySelectorAll('.b')].filter((b) => +b.dataset.v <= +v).pop() : null;
   focus ??= versesEl.querySelector('mark')?.closest('.b');
   const last = store.lastRead();
+  fitVerses(versesEl);
   if (focus) {
     focus.classList.add('focus');
     scrolls.delete(routeKey);
-    requestAnimationFrame(() => focus.scrollIntoView({ block: 'center' }));
+    // Scroll only the view (scrollIntoView would also try to scroll the page itself).
+    requestAnimationFrame(() => {
+      const r = focus.getBoundingClientRect();
+      const vr = el.view.getBoundingClientRect();
+      el.view.scrollTop += r.top - vr.top - (vr.height - r.height) / 2;
+    });
   } else if (params.get('resume') && last?.id === p.id) {
     scrolls.set(routeKey, last.scroll || 0);
   } else if (dir) scrolls.delete(routeKey);
@@ -684,11 +814,17 @@ async function runSearch(q, initial = false) {
   verseTimer = setTimeout(() => loadVerses(seq, true), 220);
 }
 
-async function loadVerses(seq, first) {
-  if (search.loading && !first) return;
+async function loadVerses(seq, first, cursor = first ? 0 : search.cursor) {
+  if (search.loading && cursor === search.cursor && !first) return;
   search.loading = true;
-  const r = await call('verses', { q: search.q, scope: search.scope, cursor: first ? 0 : search.cursor }).finally(() => (search.loading = false));
+  const r = await call('verses', { q: search.q, scope: search.scope, cursor }).finally(() => (search.loading = false));
   if (seq !== search.seq) return;
+  // A page can end on its time budget before finding anything: keep scanning.
+  if (!r.hits.length && r.cursor !== -1) {
+    search.candidates = r.candidates;
+    $('#status').textContent = `در حال جستجو در ${fa(r.candidates)} شعر…`;
+    return loadVerses(seq, first, r.cursor);
+  }
   const sec = $('#verse-section');
   const cq = normalizeCompact(search.q);
   if (first) {
