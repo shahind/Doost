@@ -138,7 +138,6 @@ function fitTitle() {
 }
 window.addEventListener('resize', () => requestAnimationFrame(fitTitle));
 document.fonts?.ready.then(fitTitle);
-$('#nav-random').addEventListener('click', () => randomPoem());
 $('#nav-settings').addEventListener('click', () => openSettings());
 
 function parentOf(route) {
@@ -587,7 +586,6 @@ async function showPoem(id, params) {
     if (act === 'menu')
       return openMenu(target, [
         [icon('search') + ' جستجو در این بخش', () => (location.hash = `#/search?cat=${cats[p.catIdx].id}`)],
-        [icon('shuffle') + ' شعر تصادفی از این بخش', () => randomPoem({ cat: p.catIdx })],
         [icon('feather') + ' صفحهٔ ' + esc(poet.name), () => (location.hash = `#/poet/${poet.id}`)],
         [icon('settings') + ' تنظیمات', openSettings],
       ]);
