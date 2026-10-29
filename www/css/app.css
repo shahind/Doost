@@ -1360,3 +1360,67 @@ body.on-poem #btn-settings {
     border-color: var(--line);
   }
 }
+
+/* ------------------------------------------------------------------ layout consistency */
+
+/* Every page but home shares the poem page's width, so breadcrumbs and titles line up. */
+.page,
+.poem {
+  max-width: 860px;
+}
+.page.home-page {
+  max-width: 1000px;
+}
+.top-nav button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border: 0;
+  border-radius: 12px;
+  background: none;
+  color: inherit;
+  font-size: 0.9rem;
+  opacity: 0.8;
+  cursor: pointer;
+}
+.top-nav button svg {
+  width: 19px;
+  height: 19px;
+}
+@media (hover: hover) {
+  .top-nav a:hover,
+  .top-nav button:hover {
+    background: rgb(255 255 255 / 0.1);
+    opacity: 1;
+  }
+}
+
+/* Long titles slide to their end and back (RTL: the hidden part is on the left). */
+.appbar-title span {
+  display: inline-block;
+  width: max-content;
+  white-space: nowrap;
+  vertical-align: top;
+}
+.appbar-title.marquee {
+  text-overflow: clip;
+  -webkit-mask-image: linear-gradient(to left, transparent, #000 10px, #000 calc(100% - 14px), transparent);
+  mask-image: linear-gradient(to left, transparent, #000 10px, #000 calc(100% - 14px), transparent);
+}
+.appbar-title.marquee span {
+  animation: title-slide linear infinite;
+}
+@keyframes title-slide {
+  0%,
+  18% {
+    transform: translateX(0);
+  }
+  50%,
+  68% {
+    transform: translateX(var(--shift));
+  }
+  100% {
+    transform: translateX(0);
+  }
+}

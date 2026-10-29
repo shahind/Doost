@@ -118,11 +118,28 @@ let routeKey = '';
 let cleanup = null;
 
 function setHeader({ title = '', actions = '', back = true }) {
-  el.title.textContent = title;
+  el.title.innerHTML = title ? `<span>${esc(title)}</span>` : '';
   el.brand.hidden = !!title;
   el.actions.innerHTML = actions;
   el.back.hidden = !back;
+  requestAnimationFrame(fitTitle);
 }
+
+// A title wider than the bar slides to its end and back instead of being cut with «…».
+function fitTitle() {
+  const span = el.title.firstElementChild;
+  el.title.classList.remove('marquee');
+  if (!span) return;
+  const over = span.offsetWidth - el.title.clientWidth;
+  if (over <= 2) return;
+  span.style.setProperty('--shift', `${over}px`);
+  span.style.animationDuration = `${Math.max(7, 4 + over / 22)}s`;
+  el.title.classList.add('marquee');
+}
+window.addEventListener('resize', () => requestAnimationFrame(fitTitle));
+document.fonts?.ready.then(fitTitle);
+$('#nav-random').addEventListener('click', () => randomPoem());
+$('#nav-settings').addEventListener('click', () => openSettings());
 
 function parentOf(route) {
   const [path] = route.slice(1).split('?');
@@ -194,7 +211,7 @@ function showHome() {
     </div>`;
   const last = store.lastRead();
   el.view.innerHTML = `
-    <div class="page">
+    <div class="page home-page">
       <a class="hero-search" href="#/search">${icon('search')}<span>جستجو در شاعران، عنوان‌ها و ابیات…</span></a>
       ${
         last
@@ -294,8 +311,8 @@ async function showPoet(id) {
   const root = cats[poet.rootCat];
   setHeader({
     title: poet.name,
-    actions: `<a class="icon-btn" href="#/search?poet=${poet.id}" title="جستجو در آثار" aria-label="جستجو در آثار">${icon('search')}</a>
-              <button class="icon-btn" id="act-random" title="شعر تصادفی" aria-label="شعر تصادفی">${icon('shuffle')}</button>`,
+    actions: `<a class="icon-btn narrow-only" href="#/search?poet=${poet.id}" title="جستجو در آثار" aria-label="جستجو در آثار">${icon('search')}</a>
+              <button class="icon-btn narrow-only" id="act-random" title="شعر تصادفی" aria-label="شعر تصادفی">${icon('shuffle')}</button>`,
   });
   const own = await call('catPoems', { cat: root.idx });
   el.view.innerHTML = `
@@ -336,20 +353,29 @@ async function showCat(id) {
   if (c.parentIdx < 0) return showPoet(poets[c.poetIdx].id);
   setHeader({
     title: c.title,
-    actions: `<a class="icon-btn" href="#/search?cat=${c.id}" title="جستجو در این بخش" aria-label="جستجو در این بخش">${icon('search')}</a>
-              <button class="icon-btn" id="act-random" title="شعر تصادفی" aria-label="شعر تصادفی">${icon('shuffle')}</button>`,
+    actions: `<a class="icon-btn narrow-only" href="#/search?cat=${c.id}" title="جستجو در این بخش" aria-label="جستجو در این بخش">${icon('search')}</a>
+              <button class="icon-btn narrow-only" data-random title="شعر تصادفی" aria-label="شعر تصادفی">${icon('shuffle')}</button>`,
   });
   const own = await call('catPoems', { cat: c.idx });
   el.view.innerHTML = `
     <div class="page">
       ${crumbs(c.idx, { includeLast: false })}
+      <header class="poem-head">
+        <h2>${esc(c.title)}</h2>
+        <div class="by">${esc(poets[c.poetIdx].name)} · ${fa(c.poemCount)} شعر${c.children.length ? ` در ${fa(c.children.length)} بخش` : ''}</div>
+        <div class="poem-actions wide-only">
+          <a class="chip-btn" href="#/search?cat=${c.id}">${icon('search')} جستجو در این بخش</a>
+          <button class="chip-btn" data-random>${icon('shuffle')} شعر تصادفی از این بخش</button>
+        </div>
+      </header>
       ${c.children.length ? `<div class="section-title">${icon('folder')} بخش‌ها</div><div class="card">${catRows(c.children)}</div>` : ''}
       ${own.length ? `<div class="section-title">${icon('book')} اشعار <span class="count">${fa(own.length)}</span></div><div class="card" id="poem-list">${poemRows(own)}</div>` : ''}
       ${!own.length && !c.children.length ? `<div class="empty">محتوایی در این بخش یافت نشد.</div>` : ''}
     </div>`;
   mountPoemList(own);
-  $('#act-random').onclick = () => randomPoem({ cat: c.idx });
-  el.view.onclick = null;
+  const random = (e) => e.target.closest('[data-random]') && randomPoem({ cat: c.idx });
+  el.view.onclick = random;
+  el.actions.onclick = random;
 }
 
 // ------------------------------------------------------------------ poem
@@ -532,7 +558,6 @@ async function showPoem(id, params) {
           <button class="chip-btn" data-act="share">${icon('share')} اشتراک</button>
           <button class="chip-btn" data-act="copy">${icon('copy')} رونوشت</button>
           <a class="chip-btn" href="#/search?cat=${cats[p.catIdx].id}">${icon('search')} جستجو در این بخش</a>
-          <button class="chip-btn" data-act="font">${icon('settings')} تنظیمات</button>
         </div>
       </header>
       <article class="verses" id="verses">${verseBlocks(p.verses, cq)}</article>
