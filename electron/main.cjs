@@ -23,7 +23,7 @@ const TYPES = {
   '.webmanifest': 'application/manifest+json',
   '.png': 'image/png',
   '.woff2': 'font/woff2',
-  '.bin': 'application/octet-stream',
+  '.txt': 'text/plain', // data files: .txt so download managers (IDM…) leave them alone
 };
 
 function startServer() {

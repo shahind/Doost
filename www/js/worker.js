@@ -110,7 +110,7 @@ function scanList(list, q, accept, limit) {
 
 async function init() {
   meta = await fetch(new URL('meta.json', DATA), { cache: 'no-cache' }).then((r) => r.json());
-  const [cat, pm] = await Promise.all([fetchBin('catalog.bin'), fetchBin('poems.bin')]);
+  const [cat, pm] = await Promise.all([fetchBin('catalog.txt'), fetchBin('poems.txt')]);
   charTable = new Uint16Array(256);
   for (let i = 0; i < meta.charset.length; i++) charTable[i] = meta.charset.charCodeAt(i);
   stop = new Set(meta.stopwords);
@@ -182,7 +182,7 @@ async function loadBlock(b) {
     blockCache.set(b, entry);
     return entry;
   }
-  entry = fetchBin(`v/${b}.bin`).then(decodeBlock);
+  entry = fetchBin(`v/${b}.txt`).then(decodeBlock);
   blockCache.set(b, entry);
   if (blockCache.size > BLOCK_CACHE) blockCache.delete(blockCache.keys().next().value);
   try {
@@ -245,7 +245,7 @@ async function loadShard(s) {
     shardCache.set(s, entry);
     return entry;
   }
-  entry = fetchBin(`t/${s}.bin`).then((buf) => {
+  entry = fetchBin(`t/${s}.txt`).then((buf) => {
     const st = { p: 0 };
     const n = readVarint(buf, st);
     const heads = [];
@@ -464,7 +464,7 @@ const handlers = {
   },
   async bios() {
     await ready;
-    return utf8.decode(await fetchBin('bios.bin')).split('\n');
+    return utf8.decode(await fetchBin('bios.txt')).split('\n');
   },
   async resolve({ ids }) {
     await ready;

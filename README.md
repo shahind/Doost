@@ -47,10 +47,10 @@ and the desktop app keeps the same origin and profile folder.
 
 | File | Content |
 |---|---|
-| `catalog.bin` | poets, the section tree and all poem titles (1 MB gzip) — loaded at startup |
-| `poems.bin`, `bios.bin` | Ganjoor poem ids & section of each poem; poet biographies (lazy) |
-| `v/<n>.bin` | verse text in ~64 KB blocks, transcoded to a single-byte charset before gzip |
-| `t/<n>.bin` | inverted index word → poems, sharded by word prefix (supports prefix search) |
+| `catalog.txt` | poets, the section tree and all poem titles (1 MB gzip) — loaded at startup |
+| `poems.txt`, `bios.txt` | Ganjoor poem ids & section of each poem; poet biographies (lazy) |
+| `v/<n>.txt` | verse text in ~64 KB blocks, transcoded to a single-byte charset before gzip |
+| `t/<n>.txt` | inverted index word → poems, sharded by word prefix (supports prefix search) |
 
 Poems are stored in **reading order**: poets by Ganjoor id (≈ prominence), then each poet's book
 tree. So the next poem is usually in an already-loaded block, "search within this poet / book"

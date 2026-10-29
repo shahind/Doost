@@ -4,15 +4,15 @@
 //
 // Output:
 //   meta.json          counts, block table, shard table, charset, stopwords, build id
-//   catalog.bin        gzip text, three sections separated by \x1d:
+//   catalog.txt        gzip text, three sections separated by \x1d:
 //                        poets  "id \t name \t rootCat \t firstPoem \t poemCount" per line (by id)
 //                        cats   "id \t poetIdx \t parentIdx \t firstPoem \t poemCount \t title" per line
 //                        titles one poem title per line, in reading order
-//   poems.bin          gzip: Uint32[poems] Ganjoor poem ids, then Uint16[poems] category index
-//   bios.bin           gzip text: poet descriptions, one per line (same order as poets)
-//   v/<n>.bin          verse blocks; one record per poem, records joined by \x1e,
+//   poems.txt          gzip: Uint32[poems] Ganjoor poem ids, then Uint16[poems] category index
+//   bios.txt           gzip text: poet descriptions, one per line (same order as poets)
+//   v/<n>.txt          verse blocks; one record per poem, records joined by \x1e,
 //                      verses joined by \n, each verse = position char (\x10 + position + 1) + text
-//   t/<n>.bin          inverted index (token -> poem indexes), shards grouped by token prefix
+//   t/<n>.txt          inverted index (token -> poem indexes), shards grouped by token prefix
 //
 // "Poem index" = position in reading order: poets by Ganjoor id (≈ prominence), then each
 // poet's category tree depth-first, poems by id. Each poet's poems are one contiguous range.
@@ -90,11 +90,11 @@ const catalog = [
   cats.map((c) => [c.id, c.poetIdx, c.parentIdx, c.firstPoem, c.poemCount, c.title].join('\t')).join('\n'),
   poems.map((p) => p.title).join('\n'),
 ].join('\x1d');
-const catalogBytes = write('catalog.bin', gz(Buffer.from(catalog, 'utf8')));
+const catalogBytes = write('catalog.txt', gz(Buffer.from(catalog, 'utf8')));
 const ids = new Uint32Array(poems.map((p) => p.id));
 const catIdx = new Uint16Array(poems.map((p) => p.catIdx));
-const poemsBytes = write('poems.bin', gz(Buffer.concat([Buffer.from(ids.buffer), Buffer.from(catIdx.buffer)])));
-const biosBytes = write('bios.bin', gz(Buffer.from(poets.map((p) => p.bio).join('\n'), 'utf8')));
+const poemsBytes = write('poems.txt', gz(Buffer.concat([Buffer.from(ids.buffer), Buffer.from(catIdx.buffer)])));
+const biosBytes = write('bios.txt', gz(Buffer.from(poets.map((p) => p.bio).join('\n'), 'utf8')));
 
 // ---------------------------------------------------------------------------
 // Verses.
@@ -122,7 +122,7 @@ let verseBytes = 0;
 const flush = () => {
   if (!block.length) return;
   rawBytes += block.length;
-  verseBytes += write(`v/${blockStarts.length - 1}.bin`, gz(Buffer.from(block)));
+  verseBytes += write(`v/${blockStarts.length - 1}.txt`, gz(Buffer.from(block)));
   block = [];
 };
 records.forEach((rec, i) => {
@@ -215,7 +215,7 @@ for (let g = 0; g < groups.length; ) {
       postingCount += e.count;
     }
   }
-  indexBytes += write(`t/${shardCount++}.bin`, gz(Buffer.concat([Buffer.from(head), Buffer.from(body)])));
+  indexBytes += write(`t/${shardCount++}.txt`, gz(Buffer.concat([Buffer.from(head), Buffer.from(body)])));
 }
 console.timeEnd('index');
 
