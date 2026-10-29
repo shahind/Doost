@@ -1,49 +1,80 @@
 {
-  "name": "doost-app",
+  "name": "doost",
+  "version": "2.0.0",
   "private": true,
-  "version": "1.0.0",
-  "homepage": "https://github.io/Doost",
+  "description": "Doost (دوست) — fast, lightweight, fully offline Persian poetry library (Ganjoor) for web, Android, iOS, Windows and Linux",
+  "author": {
+    "name": "Shahin",
+    "email": "shahin.shdm@gmail.com"
+  },
+  "homepage": "https://shahind.github.io/Doost/",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/shahind/Doost.git"
+  },
   "type": "module",
+  "main": "electron/main.cjs",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "build:ghpages": "vite build --mode ghpages",
-    "lint": "eslint .",
-    "preview": "vite preview",
-    "apk:sync": "npm run build && npx cap sync",
-    "apk:build": "npm run apk:sync && cd android && gradlew assembleDebug && cd ..",
-    "android:assets": "npx capacitor-assets generate --android",
-    "android:dev": "npm run apk:build && adb install -r android\\app\\build\\outputs\\apk\\debug\\app-debug.apk",
-    "desktop:copy": "node -e \"require('fs').cpSync('dist','electron/app',{recursive:true})\"",
-    "desktop:dev": "npm run build && npm run desktop:copy && cd electron && npm run electron:start",
-    "desktop:build": "npm run build && npm run desktop:copy && cd electron && npm run electron:pack",
-    "predeploy": "npm run build:ghpages",
-    "deploy": "gh-pages -d dist"
+    "build:data": "node --no-warnings --max-old-space-size=8192 tools/build-data.mjs",
+    "test": "node --no-warnings tools/test-search.mjs",
+    "serve": "node tools/serve.mjs",
+    "vendor": "node -e \"require('fs').copyFileSync('node_modules/@capacitor/core/dist/capacitor.js','www/js/vendor/capacitor.js')\"",
+    "electron": "electron .",
+    "dist:win": "electron-builder --win",
+    "dist:linux": "electron-builder --linux",
+    "cap:sync": "cap sync",
+    "android": "cap sync android && cap open android",
+    "ios": "cap sync ios && cap open ios",
+    "assets": "capacitor-assets generate --android --ios"
   },
   "dependencies": {
-    "@capacitor/android": "^8.3.4",
-    "@capacitor/cli": "^8.3.4",
-    "@capacitor/core": "^8.3.4",
-    "@capacitor/ios": "^8.5.0",
-    "@capacitor/share": "^8.0.1",
-    "lucide-react": "^1.17.0",
-    "react": "^19.2.6",
-    "react-dom": "^19.2.6"
+    "@capacitor/app": "^8.1.2",
+    "@capacitor/clipboard": "^8.0.1",
+    "@capacitor/core": "^8.5.3",
+    "@capacitor/share": "^8.0.3",
+    "@capacitor/status-bar": "^8.0.4"
   },
   "devDependencies": {
+    "@capacitor/android": "^8.5.3",
     "@capacitor/assets": "^3.0.5",
-    "@eslint/js": "^10.0.1",
-    "@types/react": "^19.2.14",
-    "@types/react-dom": "^19.2.3",
-    "@vitejs/plugin-react": "^6.0.1",
-    "autoprefixer": "^10.5.0",
-    "eslint": "^10.3.0",
-    "eslint-plugin-react-hooks": "^7.1.1",
-    "eslint-plugin-react-refresh": "^0.5.2",
-    "gh-pages": "^6.3.0",
-    "globals": "^17.6.0",
-    "postcss": "^8.5.15",
-    "tailwindcss": "^3.4.19",
-    "vite": "^8.0.12"
+    "@capacitor/cli": "^8.5.3",
+    "@capacitor/ios": "^8.5.3",
+    "electron": "^44.7.0",
+    "electron-builder": "^26.15.3"
+  },
+  "build": {
+    "appId": "com.shahinsoft.doost",
+    "productName": "Doost",
+    "copyright": "Doost — Persian poetry",
+    "directories": {
+      "output": "release",
+      "buildResources": "electron/build"
+    },
+    "files": [
+      "electron/main.cjs",
+      "www/**",
+      "package.json",
+      "!node_modules/**"
+    ],
+    "win": {
+      "target": [
+        "nsis",
+        "zip"
+      ],
+      "icon": "electron/build/icon.png"
+    },
+    "nsis": {
+      "oneClick": true,
+      "artifactName": "Doost-Setup-${version}.${ext}"
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "icon": "electron/build/icon.png",
+      "category": "Education",
+      "maintainer": "Shahin <shahin.shdm@gmail.com>"
+    }
   }
 }

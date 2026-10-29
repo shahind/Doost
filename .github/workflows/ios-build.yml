@@ -1,8 +1,13 @@
 name: iOS Unsigned Build
 
+# Builds an unsigned .ipa (sign it with Sideloadly / AltStore before installing).
+# - push to main      -> "dev-test" pre-release
+# - published release -> attached to that release
 on:
   push:
     branches: [main]
+  release:
+    types: [published]
   workflow_dispatch:
 
 permissions:
@@ -10,12 +15,23 @@ permissions:
 
 jobs:
   build-ios:
-    runs-on: macos-latest
+    runs-on: macos-15
+    env:
+      ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      # The 340 MB database lives in Git LFS; cache it so each run doesn't spend LFS bandwidth.
+      - name: LFS object id
+        run: git lfs ls-files -l | cut -d' ' -f1 | sort > .lfs-ids
+      - name: Restore LFS cache
+        uses: actions/cache@v4
         with:
-          lfs: true
+          path: .git/lfs/objects
+          key: lfs-${{ hashFiles('.lfs-ids') }}
+      - name: Pull LFS files
+        run: git lfs pull
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -26,13 +42,16 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build web assets
-        run: npm run build
+      - name: Build poetry data
+        run: npm run build:data
+
+      - name: Search smoke test
+        run: npm test
 
       - name: Sync Capacitor iOS platform
         run: npx cap sync ios
 
-      - name: Archive unsigned .app
+      - name: Build app (unsigned)
         run: |
           xcodebuild \
             -project ios/App/App.xcodeproj \
@@ -40,27 +59,32 @@ jobs:
             -configuration Release \
             -sdk iphoneos \
             -destination "generic/platform=iOS" \
-            -archivePath "$RUNNER_TEMP/App.xcarchive" \
-            CODE_SIGNING_ALLOWED=NO \
-            CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGN_IDENTITY="" \
-            CODE_SIGN_ENTITLEMENTS="" \
-            DEVELOPMENT_TEAM="" \
-            archive
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
+            build
 
       - name: Package IPA
         run: |
           mkdir -p Payload
-          cp -r "$RUNNER_TEMP/App.xcarchive/Products/Applications/App.app" Payload/
-          zip -r Doost.ipa Payload
+          cp -R build/Build/Products/Release-iphoneos/App.app Payload/
+          zip -qry Doost.ipa Payload
+          ls -la Doost.ipa
 
-      - name: Publish dev-test release
+      - name: Attach to release
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.release.tag_name }}
+          files: Doost.ipa
+
+      - name: Publish dev-test pre-release
+        if: github.event_name != 'release'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: dev-test
           name: "iOS Dev Test Build (${{ github.sha }})"
           body: |
-            Automatically built unsigned IPA from commit ${{ github.sha }} on `main`.
+            Automatically built unsigned IPA from commit ${{ github.sha }}.
             This is **not signed** — sign it with Sideloadly (or a similar tool) before installing on a device.
           prerelease: true
           files: Doost.ipa

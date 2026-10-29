@@ -1,0 +1,16 @@
+{
+  "name": "دوست — گنجینه همراه شعر پارسی",
+  "short_name": "دوست",
+  "description": "گنجینهٔ شعر و ادب پارسی، سریع، سبک و کاملاً آفلاین",
+  "lang": "fa",
+  "dir": "rtl",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#35646a",
+  "theme_color": "#35646a",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

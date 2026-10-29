@@ -1,5 +1,9 @@
 {
   "appId": "com.shahinsoft.doost",
   "appName": "Doost",
-  "webDir": "dist"
+  "webDir": "www",
+  "backgroundColor": "#35646a",
+  "android": { "backgroundColor": "#35646a" },
+  "ios": { "backgroundColor": "#35646a", "contentInset": "never" },
+  "plugins": { "StatusBar": { "overlaysWebView": false } }
 }
