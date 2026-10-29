@@ -60,7 +60,7 @@
     "win": {
       "target": [
         "nsis",
-        "zip"
+        "portable"
       ],
       "icon": "electron/build/icon.png"
     },
@@ -76,6 +76,27 @@
       "icon": "electron/build/icon.png",
       "category": "Education",
       "maintainer": "Shahin <shahin.shdm@gmail.com>"
+    },
+    "appx": {
+      "applicationId": "Doost",
+      "displayName": "دوست — گنجینه همراه شعر پارسی",
+      "identityName": "Shahin.Doost",
+      "publisher": "CN=Shahin",
+      "publisherDisplayName": "Shahin",
+      "backgroundColor": "#35646a",
+      "languages": [
+        "fa-IR",
+        "en-US"
+      ],
+      "showNameOnTiles": false,
+      "artifactName": "${productName}-${version}-store.${ext}"
+    },
+    "electronLanguages": [
+      "fa",
+      "en-US"
+    ],
+    "portable": {
+      "artifactName": "Doost-Portable-${version}.${ext}"
     }
   }
 }

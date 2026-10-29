@@ -1145,7 +1145,7 @@ call('init')
     if ('caches' in window && !isNative && !isElectron) {
       caches
         .open('doost-data-v1')
-        .then((c) => c.keys().then((keys) => keys.forEach((k) => !k.url.endsWith(`v=${r.build}`) && c.delete(k))))
+        .then((c) => c.keys().then((keys) => keys.forEach((k) => !k.url.endsWith(`v=${r.build}`) && !k.url.endsWith("meta.json") && c.delete(k))))
         .catch(() => {});
     }
   })

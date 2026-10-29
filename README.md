@@ -13,6 +13,26 @@
 
 ---
 
+## Download
+
+| Platform | Link |
+|---|---|
+| 🌐 Web | **[shahind.github.io/Doost](https://shahind.github.io/Doost/)** — installable as a PWA; Settings → «بارگیری همهٔ اشعار» makes it fully offline |
+| 🤖 Android | **[Doost-2.0.0.apk](https://github.com/shahind/Doost/releases/download/v2.0.0/Doost-2.0.0.apk)** (Android 7+). If you installed the 0.0.1 debug build, uninstall it first |
+| 🍏 iOS | **[Doost.ipa](https://github.com/shahind/Doost/releases/download/v2.0.0/Doost.ipa)** — unsigned; sign with AltStore / Sideloadly |
+| 🪟 Windows | **[Doost V2.0.0 x64](https://github.com/shahind/Doost/releases/download/v2.0.0/Doost-Setup-2.0.0.exe)** — silent install: `Doost-Setup-2.0.0.exe /S` |
+| 🪟 Windows - portable | **[Doost V2.0.0 x64 Portable](https://github.com/shahind/Doost/releases/download/v2.0.0/Doost-Portable-2.0.0.exe)** |
+| 🐧 Linux | **[AppImage](https://github.com/shahind/Doost/releases/download/v2.0.0/Doost-2.0.0.AppImage)** · **[.deb](https://github.com/shahind/Doost/releases/download/v2.0.0/doost_2.0.0_amd64.deb)** |
+
+All versions are available at [Releases Page](https://github.com/shahind/Doost/releases).
+
+### Microsoft Store
+
+The [desktop workflow](.github/workflows/desktop.yml) also builds a Store package (`Doost-<version>-store.appx`, MSIX)
+once the Partner Center identity is set as repository variables (`MS_STORE_IDENTITY_NAME`, `MS_STORE_PUBLISHER`,
+`MS_STORE_PUBLISHER_NAME` — from Partner Center → the app → Product identity). Upload that file in the submission;
+Microsoft signs it, so no code-signing certificate is needed.
+
 ## Features
 
 - **237 poets, 2,246 books & sections, 133,159 poems, 3 million verses** — browse poet → book →
