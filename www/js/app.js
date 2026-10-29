@@ -79,14 +79,13 @@ function catPath(catIdx) {
 function crumbs(catIdx, { includeLast = true } = {}) {
   const path = catPath(catIdx);
   const poet = poets[path[0].poetIdx];
-  const parts = [`<a href="#/poet/${poet.id}">${esc(poet.name)}</a>`];
+  const parts = [`<a href="#/">خانه</a>`, `<a href="#/poet/${poet.id}">${esc(poet.name)}</a>`];
   const inner = path.slice(1, includeLast ? undefined : -1);
   for (const c of inner) parts.push(`<a href="#/cat/${c.id}">${esc(c.title)}</a>`);
   return `<nav class="crumbs">${parts.join(icon('next'))}</nav>`;
 }
-// Poet cards cycle through a palette of hues (tinted per theme in CSS).
-const HUES = [186, 357, 32, 210, 95, 290, 14, 160, 245, 330, 48, 120];
-const poetTint = (p) => `--h:${HUES[p.id % HUES.length]}`;
+// Poet cards cycle through 7 tints of the Doost palette (see .t0–.t6 in app.css).
+const poetTint = (p) => `t${p.id % 7}`;
 
 // ------------------------------------------------------------------ theme & settings
 
@@ -189,7 +188,7 @@ function showHome() {
     groups.get(l).push(p);
   }
   const card = (p) => `
-    <div class="poet" style="${poetTint(p)}" data-href="#/poet/${p.id}" role="link" tabindex="0">
+    <div class="poet ${poetTint(p)}" data-href="#/poet/${p.id}" role="link" tabindex="0">
       <span class="pn">${esc(p.name)}<span class="pc">${fa(p.poemCount)} شعر</span></span>
       <button class="star ${store.isSelected(p.name) ? 'on' : ''}" data-star="${esc(p.name)}" aria-label="منتخب">${icon('star')}</button>
     </div>`;
@@ -301,6 +300,7 @@ async function showPoet(id) {
   const own = await call('catPoems', { cat: root.idx });
   el.view.innerHTML = `
     <div class="page">
+      <nav class="crumbs"><a href="#/">خانه</a></nav>
       <section class="poet-hero">
         <h2>${esc(poet.name)}</h2>
         <div class="stat">${fa(poet.poemCount)} شعر${root.children.length ? ` در ${fa(root.children.length)} بخش` : ''}</div>
@@ -564,6 +564,7 @@ async function showPoem(id, params) {
         [icon('search') + ' جستجو در این بخش', () => (location.hash = `#/search?cat=${cats[p.catIdx].id}`)],
         [icon('shuffle') + ' شعر تصادفی از این بخش', () => randomPoem({ cat: p.catIdx })],
         [icon('feather') + ' صفحهٔ ' + esc(poet.name), () => (location.hash = `#/poet/${poet.id}`)],
+        [icon('settings') + ' تنظیمات', openSettings],
       ]);
   };
   el.actions.onclick = (e) => {

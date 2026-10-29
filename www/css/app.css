@@ -559,45 +559,44 @@ mark {
 .poet .star.on svg {
   fill: currentColor;
 }
-.t0 {
-  background: #35646a14;
-  color: #35646a;
+/* Poet card tints: the original Doost palette (teal-greens, reds and greys in light mode;
+   deep reds and near-blacks in dark mode), seven shades instead of two. */
+.poet {
+  background: var(--pb);
+  border-color: var(--pbd);
+  color: var(--pt);
 }
-.t1 {
-  background: #a00a0f0d;
-  color: #a00a0f;
+.poet .star {
+  color: color-mix(in srgb, var(--pt) 30%, transparent);
 }
-.t2 {
-  background: #35646a0a;
-}
-.t3 {
-  background: #35646a0a;
-  color: #a00a0f;
-}
-:root[data-theme='dark'] .t0,
-:root[data-theme='dark'] .t2 {
-  background: #2a3536;
-  color: var(--text);
-}
-:root[data-theme='dark'] .t1,
-:root[data-theme='dark'] .t3 {
-  background: #2a1d1e;
-  color: var(--heart);
-}
+.t0 { --pb: #35646a14; --pbd: #35646a1f; --pt: #35646a; }
+.t1 { --pb: #a00a0f0f; --pbd: #a00a0f1a; --pt: #a00a0f; }
+.t2 { --pb: #35646a08; --pbd: #35646a14; --pt: #2f5a5f; }
+.t3 { --pb: #3732320a; --pbd: #3732321a; --pt: #373232; }
+.t4 { --pb: #ffffff; --pbd: #ece4da; --pt: #373232; }
+.t5 { --pb: #a00a0f08; --pbd: #a00a0f12; --pt: #8a2e31; }
+.t6 { --pb: #35646a1f; --pbd: #35646a29; --pt: #244a4e; }
+:root[data-theme='dark'] .t0 { --pb: #1f1415; --pbd: #2c1c1d; --pt: #e0767b; }
+:root[data-theme='dark'] .t1 { --pb: #1a1a1a; --pbd: #262626; --pt: #d8d0c8; }
+:root[data-theme='dark'] .t2 { --pb: #2a1718; --pbd: #3a2022; --pt: #f0a0a4; }
+:root[data-theme='dark'] .t3 { --pb: #141414; --pbd: #222222; --pt: #b9b1aa; }
+:root[data-theme='dark'] .t4 { --pb: #331b1d; --pbd: #45252a; --pt: #ffd2d4; }
+:root[data-theme='dark'] .t5 { --pb: #202020; --pbd: #2e2e2e; --pt: #ebe4dc; }
+:root[data-theme='dark'] .t6 { --pb: #241012; --pbd: #36181b; --pt: #d65a60; }
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) .t0,
-  :root:not([data-theme='light']) .t2 {
-    background: #2a3536;
-    color: var(--text);
-  }
-  :root:not([data-theme='light']) .t1,
-  :root:not([data-theme='light']) .t3 {
-    background: #2a1d1e;
-    color: var(--heart);
-  }
+  :root:not([data-theme='light']) .t0 { --pb: #1f1415; --pbd: #2c1c1d; --pt: #e0767b; }
+  :root:not([data-theme='light']) .t1 { --pb: #1a1a1a; --pbd: #262626; --pt: #d8d0c8; }
+  :root:not([data-theme='light']) .t2 { --pb: #2a1718; --pbd: #3a2022; --pt: #f0a0a4; }
+  :root:not([data-theme='light']) .t3 { --pb: #141414; --pbd: #222222; --pt: #b9b1aa; }
+  :root:not([data-theme='light']) .t4 { --pb: #331b1d; --pbd: #45252a; --pt: #ffd2d4; }
+  :root:not([data-theme='light']) .t5 { --pb: #202020; --pbd: #2e2e2e; --pt: #ebe4dc; }
+  :root:not([data-theme='light']) .t6 { --pb: #241012; --pbd: #36181b; --pt: #d65a60; }
   :root:not([data-theme='light']) .letter-head {
     color: var(--heart);
   }
+}
+.poet .star.on {
+  color: var(--heart);
 }
 
 .fab {
@@ -1232,10 +1231,6 @@ html {
   .narrow-only {
     display: none !important;
   }
-  /* Wide poem pages have their actions under the title. */
-  body.on-poem #btn-settings {
-    display: none;
-  }
 }
 @media (max-width: 899px) {
   .wide-only {
@@ -1341,34 +1336,27 @@ html {
   cursor: progress;
 }
 
-/* ------------------------------------------------------------------ poet card palette */
 
-.poet {
-  background: hsl(var(--h, 186) 45% 45% / 0.08);
-  border-color: hsl(var(--h, 186) 40% 40% / 0.16);
-  color: hsl(var(--h, 186) 55% 28%);
+/* Poem pages reach settings from the buttons under the title (wide) or the ⋮ menu (phones). */
+body.on-poem #btn-settings {
+  display: none;
 }
-.poet .star {
-  color: hsl(var(--h, 186) 40% 40% / 0.35);
-}
-:root[data-theme='dark'] .poet {
-  background: hsl(var(--h, 186) 22% 14%);
-  border-color: hsl(var(--h, 186) 22% 21%);
-  color: hsl(var(--h, 186) 45% 78%);
-}
-:root[data-theme='dark'] .poet .star {
-  color: hsl(var(--h, 186) 30% 60% / 0.4);
-}
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) .poet {
-    background: hsl(var(--h, 186) 22% 14%);
-    border-color: hsl(var(--h, 186) 22% 21%);
-    color: hsl(var(--h, 186) 45% 78%);
+
+/* Touch screens keep the last tapped element "hovered": cancel hover looks there. */
+@media (hover: none) {
+  .icon-btn:hover,
+  .row:hover,
+  .b:not(.sel):hover,
+  .verse-tools button:hover,
+  .hit:hover,
+  .menu button:hover {
+    background: transparent;
   }
-  :root:not([data-theme='light']) .poet .star {
-    color: hsl(var(--h, 186) 30% 60% / 0.4);
+  .poet:hover {
+    box-shadow: none;
+    transform: none;
   }
-}
-.poet .star.on {
-  color: var(--heart) !important;
+  .share-act:hover {
+    border-color: var(--line);
+  }
 }
