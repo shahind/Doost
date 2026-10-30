@@ -1497,3 +1497,9 @@ html {
   height: 18px;
   stroke-width: 2.4;
 }
+
+/* No double-tap zoom (iOS): taps on verses select / open tools; pinch-zoom still works. */
+html,
+body {
+  touch-action: manipulation;
+}

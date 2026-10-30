@@ -118,7 +118,6 @@ svg.shamseh {
 @keyframes invocation {
   from {
     opacity: 0;
-    filter: blur(3px);
     transform: translateY(4px);
   }
 }
@@ -343,7 +342,6 @@ svg.shamseh {
   from {
     opacity: 0;
     transform: translateY(6px);
-    filter: blur(2px);
   }
 }
 .faal-interp {

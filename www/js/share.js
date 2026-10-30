@@ -174,7 +174,8 @@ export async function shareImage(blob, name, title) {
   if (isNative) {
     const { uri } = await plugin('Filesystem').writeFile({ path: name, data: await toBase64(blob), directory: 'CACHE' });
     try {
-      await plugin('Share').share({ title, files: [uri], dialogTitle: title });
+      // Only the image: a title would be sent along as an extra text message.
+      await plugin('Share').share({ files: [uri], dialogTitle: title });
       return 'shared';
     } catch (e) {
       if (isCancel(e)) return 'cancelled';
@@ -185,7 +186,7 @@ export async function shareImage(blob, name, title) {
   const file = new File([blob], name, { type: 'image/png' });
   if (matchMedia('(pointer: coarse)').matches && navigator.canShare?.({ files: [file] })) {
     try {
-      await navigator.share({ files: [file], title });
+      await navigator.share({ files: [file] });
       return 'shared';
     } catch (e) {
       if (isCancel(e)) return 'cancelled';
