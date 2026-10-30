@@ -53,3 +53,34 @@ export async function shareText(title, text) {
   await copyText(text);
   return 'copied';
 }
+
+// Opens a word in Yaad (the Dehkhoda dictionary app): the installed Yaad app if there is one
+// (yaad://), otherwise Yaad's web version — which, on Android, an installed Yaad PWA can capture.
+const YAAD_WEB = 'https://shahind.github.io/Yaad/';
+export async function lookupInYaad(word) {
+  const q = encodeURIComponent(word.trim());
+  const web = `${YAAD_WEB}#/?q=${q}&go=1`;
+  if (isNative) {
+    const launcher = plugin('AppLauncher');
+    const app = `yaad://search?q=${q}`;
+    try {
+      // Android checks the package; iOS checks the URL scheme (declared in Info.plist).
+      const probe = cap.getPlatform() === 'android' ? 'io.github.shahind.yaad' : 'yaad://';
+      const { value } = await launcher.canOpenUrl({ url: probe });
+      if (value) {
+        await launcher.openUrl({ url: app });
+        return 'app';
+      }
+    } catch (e) {
+      /* fall through to the web version */
+    }
+    try {
+      await launcher.openUrl({ url: web });
+      return 'web';
+    } catch (e) {
+      /* fall through */
+    }
+  }
+  window.open(web, '_blank', 'noopener');
+  return 'web';
+}

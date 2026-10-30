@@ -46,6 +46,13 @@ Microsoft signs it, so no code-signing certificate is needed.
 - **Favorites** (grouped by poet), featured poets, recent searches, **continue reading** where you left off.
 - Share / copy a whole poem **or a single beyt** (tap a verse).
 - Poet biographies, random poem (everywhere, per poet, per section).
+- **فال حافظ**: make an intention, hold the closed Divan until it opens, and read the ghazal with its
+  interpretation (495 ghazals from `db/faal.txt`, a separate collection that is never mixed with
+  Ganjoor). From the home screen or Hafez's page; shareable as text or image.
+- **Look up a word in Yaad** (the Dehkhoda dictionary): tap a verse and choose «… در لغت‌نامه», or
+  select a word (double-click / long-press). Opens the Yaad app if installed (`yaad://search?q=…`),
+  otherwise [Yaad on the web](https://shahind.github.io/Yaad/) — on Android an installed Yaad PWA
+  can capture that link.
 - Light / dark / automatic theme, adjustable poem text size.
 - **100% offline**. The web version caches what you read (or everything, from Settings).
 

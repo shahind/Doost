@@ -46,12 +46,14 @@ function wrap(ctx, text, maxW) {
   return lines;
 }
 
-export async function renderPoemImage({ title, poet, verses }) {
+export async function renderPoemImage({ title, poet, verses, note }) {
   await Promise.all([
     document.fonts.load('700 56px Amiri'),
     document.fonts.load('46px Amiri'),
     document.fonts.load('30px Estedad'),
     document.fonts.load('700 30px Estedad'),
+    document.fonts.load('34px Estedad'),
+    document.fonts.load('700 36px Amiri'),
   ]);
   const logo = await loadImage('icons/logo.png');
   const measure = document.createElement('canvas').getContext('2d');
@@ -98,6 +100,19 @@ export async function renderPoemImage({ title, poet, verses }) {
         count++;
       }
       y += 22;
+    }
+  }
+  if (note) {
+    // Faal: the interpretation under its own heading.
+    y += 10;
+    ops.push({ rule: true, y });
+    y += 76;
+    ops.push({ font: '700 36px Amiri', color: C.teal, align: 'center', x: W / 2, y, text: 'تعبیر' });
+    y += 64;
+    measure.font = '34px Estedad';
+    for (const line of wrap(measure, note, inner)) {
+      ops.push({ font: '34px Estedad', color: C.text, align: 'right', x: W - PAD, y, text: line });
+      y += 60;
     }
   }
   y += 10;

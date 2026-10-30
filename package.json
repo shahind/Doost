@@ -15,7 +15,7 @@
   "type": "module",
   "main": "electron/main.cjs",
   "scripts": {
-    "build:data": "node --no-warnings --max-old-space-size=8192 tools/build-data.mjs",
+    "build:data": "node --no-warnings --max-old-space-size=8192 tools/build-data.mjs && node tools/build-faal.mjs",
     "test": "node --no-warnings tools/test-search.mjs",
     "serve": "node tools/serve.mjs",
     "vendor": "node -e \"require('fs').copyFileSync('node_modules/@capacitor/core/dist/capacitor.js','www/js/vendor/capacitor.js')\"",
@@ -25,10 +25,12 @@
     "cap:sync": "cap sync",
     "android": "cap sync android && cap open android",
     "ios": "cap sync ios && cap open ios",
-    "assets": "capacitor-assets generate --android --ios"
+    "assets": "capacitor-assets generate --android --ios",
+    "build:faal": "node tools/build-faal.mjs"
   },
   "dependencies": {
     "@capacitor/app": "^8.1.2",
+    "@capacitor/app-launcher": "^8.0.1",
     "@capacitor/clipboard": "^8.0.1",
     "@capacitor/core": "^8.5.3",
     "@capacitor/filesystem": "^8.1.5",

@@ -184,6 +184,7 @@ function route() {
   else if (kind === 'poem') done = showPoem(+id, params);
   else if (kind === 'search') done = showSearch(params);
   else if (kind === 'favs') done = showFavs(id ? +id : null);
+  else if (kind === 'faal') done = id ? showFaalResult(+id) : showFaal();
   else done = showHome();
   Promise.resolve(done).then(() => {
     el.view.scrollTop = scrolls.get(routeKey) || 0;
@@ -218,6 +219,8 @@ function showHome() {
           ? `<a class="continue" href="#/poem/${last.id}?resume=1">${icon('book')}<span class="grow"><small>ادامهٔ خواندن · ${esc(last.poet)}</small><b>${esc(last.title)}</b></span>${icon('next')}</a>`
           : ''
       }
+      <a class="faal-card" href="#/faal"><span class="faal-card-mark">${SHAMSEH}</span>
+        <span class="grow"><b>فال حافظ</b><small>نیت کنید و دیوان حافظ را بگشایید</small></span>${icon('next')}</a>
       ${
         sel.length
           ? `<div class="section-title">${icon('star')} شاعران منتخب</div><div class="poets">${sel.map(card).join('')}</div>`
@@ -326,6 +329,7 @@ async function showPoet(id) {
           <a class="chip-btn primary" href="#/search?poet=${poet.id}">${icon('search')} جستجو در آثار</a>
           <button class="chip-btn" data-random>${icon('shuffle')} شعر تصادفی</button>
           <button class="chip-btn ${store.isSelected(poet.name) ? 'on' : ''}" data-star>${icon('star')} منتخب</button>
+          ${poet.id === 2 ? `<a class="chip-btn faal-chip" href="#/faal">${icon('book')} فال حافظ</a>` : ''}
         </div>
       </section>
       ${root.children.length ? `<div class="section-title">${icon('folder')} بخش‌ها</div><div class="card">${catRows(root.children)}</div>` : ''}
@@ -433,6 +437,76 @@ const refit = () => {
 window.addEventListener('resize', refit);
 document.fonts?.ready.then(refit);
 
+// ------------------------------------------------------------------ dictionary look-up (Yaad)
+
+// Letters, digits, diacritics and ZWNJ make up a word (so «کوزه‌ها» stays one word).
+const WORD_CHAR = /[\p{L}\p{M}\p{N}‌]/u;
+
+// The word under a screen point inside `root`, or ''.
+function wordAt(x, y, root) {
+  let node;
+  let offset;
+  if (document.caretPositionFromPoint) {
+    const pos = document.caretPositionFromPoint(x, y);
+    node = pos?.offsetNode;
+    offset = pos?.offset;
+  } else if (document.caretRangeFromPoint) {
+    const r = document.caretRangeFromPoint(x, y);
+    node = r?.startContainer;
+    offset = r?.startOffset;
+  }
+  if (!node || node.nodeType !== 3 || !root.contains(node)) return '';
+  const t = node.nodeValue;
+  let s = offset;
+  let e = offset;
+  while (s > 0 && WORD_CHAR.test(t[s - 1])) s--;
+  while (e < t.length && WORD_CHAR.test(t[e])) e++;
+  return t.slice(s, e).replace(/^‌+|‌+$/g, '');
+}
+
+async function lookupWord(word) {
+  word = (word || '').replace(/[^\p{L}\p{M}\p{N}‌ ]+/gu, ' ').trim();
+  if (!word) return;
+  const { lookupInYaad } = await import('./platform.js');
+  toast(`«${word}» در «یاد» باز می‌شود…`);
+  lookupInYaad(word);
+}
+
+// Selecting a word (double-click, or long-press on touch screens) offers a dictionary look-up.
+// The chip sits below the selection so it doesn't cover the system's own selection menu.
+let selChip = null;
+let selTimer;
+function hideSelChip() {
+  selChip?.remove();
+  selChip = null;
+}
+document.addEventListener('selectionchange', () => {
+  clearTimeout(selTimer);
+  selTimer = setTimeout(() => {
+    const sel = getSelection();
+    const text = String(sel).trim();
+    const inPoem = sel.rangeCount && sel.anchorNode && sel.anchorNode.parentElement?.closest('.verses');
+    if (!text || !inPoem || text.length > 40 || text.split(/\s+/).length > 3) return hideSelChip();
+    const rect = sel.getRangeAt(0).getBoundingClientRect();
+    if (!rect.width && !rect.height) return hideSelChip();
+    hideSelChip();
+    selChip = document.createElement('button');
+    selChip.className = 'sel-chip';
+    selChip.innerHTML = `${icon('book')} جستجوی «${esc(text)}» در لغت‌نامه`;
+    document.body.append(selChip);
+    const w = selChip.offsetWidth;
+    selChip.style.left = `${Math.min(innerWidth - w - 8, Math.max(8, rect.left + rect.width / 2 - w / 2))}px`;
+    selChip.style.top = `${Math.min(innerHeight - 60, rect.bottom + 12)}px`;
+    // pointerdown (not click) so the selection is still there when we read it.
+    selChip.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      hideSelChip();
+      lookupWord(text);
+    });
+  }, 250);
+});
+el.view.addEventListener('scroll', hideSelChip, { passive: true });
+
 // Small dropdown menu anchored to a button.
 let menuEl = null;
 function closeMenu() {
@@ -460,7 +534,8 @@ function openMenu(anchor, items) {
 
 // Share sheet: text preview, copy, system share, and share as picture.
 function openShareSheet(spec) {
-  const text = `${spec.verses.map((v) => v[1]).join('\n')}\n\n${spec.poet}، ${spec.beyt ? '' : spec.section + '، '}${spec.title}\nارسال شده از دوست`;
+  const note = spec.note ? `\n\nتعبیر: ${spec.note}` : '';
+  const text = `${spec.verses.map((v) => v[1]).join('\n')}${note}\n\n${spec.poet}، ${spec.beyt ? '' : spec.section + '، '}${spec.title}\nارسال شده از دوست`;
   openSheet(
     `<h3>${spec.beyt ? 'اشتراک‌گذاری بیت' : 'اشتراک‌گذاری شعر'}</h3>
      <div class="share-preview">${esc(text)}</div>
@@ -615,23 +690,28 @@ async function showPoem(id, params) {
       const k = +b.dataset.v;
       const verses = p.verses.slice(k, k + +b.dataset.n);
       const text = `${verses.map((v) => v[1]).join('\n')}\n\n${poet.name}، ${p.title}\nارسال شده از دوست`;
-      if (tool.dataset.vt === 'copy') {
+      if (tool.dataset.vt === 'dict') lookupWord(tool.dataset.word);
+      else if (tool.dataset.vt === 'copy') {
         await copyText(text);
         toast('بیت رونوشت شد');
       } else openShareSheet({ title: p.title, poet: poet.name, section: cats[p.catIdx].title, verses, beyt: true });
       clearVerseTools();
       return;
     }
-    // Tap a verse (without selecting text) to get copy/share for just that beyt.
+    // Tap a verse (without selecting text) to get copy/share for that beyt, and a dictionary
+    // look-up for the tapped word.
     const b = e.target.closest('.b');
     if (b && !String(getSelection()).trim()) {
       const was = b.classList.contains('sel');
       clearVerseTools();
       if (!was) {
+        const word = wordAt(e.clientX, e.clientY, b);
         b.classList.add('sel');
         b.insertAdjacentHTML(
           'afterbegin',
-          `<div class="verse-tools"><button data-vt="copy">${icon('copy')} رونوشت بیت</button><button data-vt="share">${icon('share')} اشتراک بیت</button></div>`,
+          `<div class="verse-tools">
+            ${word ? `<button data-vt="dict" data-word="${esc(word)}">${icon('book')} «${esc(word)}» در لغت‌نامه</button>` : ''}
+            <button data-vt="copy">${icon('copy')} رونوشت بیت</button><button data-vt="share">${icon('share')} اشتراک بیت</button></div>`,
         );
       }
     } else if (!b) clearVerseTools();
@@ -991,6 +1071,191 @@ function openScopeSheet(catIdx = null) {
   );
 }
 
+// ------------------------------------------------------------------ faal hafez
+//
+// A separate collection (db/faal.txt: ghazals with interpretations, own numbering), never mixed
+// with the Ganjoor poems. The experience follows the tradition: make an intention, then open
+// the Divan. The user holds the closed book while forming the intention; it opens on release
+// of the full hold. No randomness theatrics: calm light, the book, the words of the invocation.
+
+// A shamseh (sun medallion) from classic Persian bookbinding.
+const SHAMSEH = `<svg class="shamseh" viewBox="0 0 100 100" aria-hidden="true">
+  <circle cx="50" cy="50" r="46" />
+  <rect x="21" y="21" width="58" height="58" rx="3" />
+  <rect x="21" y="21" width="58" height="58" rx="3" transform="rotate(45 50 50)" />
+  <circle cx="50" cy="50" r="19" />
+  <circle cx="50" cy="50" r="10" />
+  <path d="M50 4v12M50 84v12M4 50h12M84 50h12M17.5 17.5l8.5 8.5M74 74l8.5 8.5M82.5 17.5 74 26M26 74l-8.5 8.5" />
+</svg>`;
+
+const INVOCATION = [
+  'ای حافظ شیرازی!',
+  'تو محرم هر رازی،',
+  'تو را به خدا و به شاخ نباتت قسم می‌دهم',
+  'که هر چه صلاح و مصلحت می‌بینی',
+  'برایم آشکار و آرزوی مرا برآورده سازی.',
+];
+
+function showFaal() {
+  setHeader({ title: 'فال حافظ' });
+  el.view.onclick = null;
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  el.view.innerHTML = `
+    <div class="page faal">
+      <nav class="crumbs"><a href="#/">خانه</a>${icon('next')}<a href="#/poet/2">حافظ</a></nav>
+      <section class="faal-ritual">
+        <h2 class="faal-step">نیت کنید</h2>
+        <div class="faal-invocation">${INVOCATION.map((l, i) => `<span style="animation-delay:${0.25 + i * 0.45}s">${l}</span>`).join('')}</div>
+        <div class="divan-stage" id="stage">
+          <div class="divan-light"></div>
+          <button class="divan" id="divan" aria-label="دیوان حافظ — برای گشودن، نگه دارید" aria-describedby="faal-hint">
+            <span class="divan-block"><span class="divan-lines"></span></span>
+            <span class="leaf"></span><span class="leaf"></span><span class="leaf"></span>
+            <span class="divan-cover">
+              <span class="cover-front"><span class="divan-frame">${SHAMSEH}<span class="divan-title">دیوان حافظ</span></span></span>
+              <span class="cover-back"></span>
+            </span>
+          </button>
+        </div>
+        <div class="faal-meter"><span></span></div>
+        <p class="faal-hint" id="faal-hint">در دل نیت کنید، سپس انگشت خود را روی کتاب نگه دارید.</p>
+      </section>
+    </div>`;
+
+  const stage = $('#stage');
+  const ritual = stage.closest('.faal-ritual');
+  const book = $('#divan');
+  const hint = $('#faal-hint');
+  call('faal', { n: 1 }).catch(() => {}); // warm the data while the user reads
+  const HOLD = reduce ? 900 : 2600;
+  const HINTS = [
+    [0, 'در دل نیت کنید…'],
+    [0.4, 'نیت خود را در دل نگه دارید…'],
+    [0.8, 'دیوان گشوده می‌شود…'],
+  ];
+  let p = 0;
+  let holding = false;
+  let done = false;
+  let last = 0;
+  let timer = 0;
+
+  // A plain 60 fps timer (not requestAnimationFrame, which some WebViews throttle).
+  const stopLoop = () => {
+    clearInterval(timer);
+    timer = last = 0;
+  };
+  const tick = () => {
+    const t = performance.now();
+    const dt = last ? Math.min(64, t - last) : 16;
+    last = t;
+    p = holding ? Math.min(1, p + dt / HOLD) : Math.max(0, p - dt / (HOLD / 2.5));
+    ritual.style.setProperty('--p', p.toFixed(3));
+    if (holding) hint.textContent = HINTS.filter(([at]) => p >= at).pop()[1];
+    if (p >= 1 && !done) {
+      stopLoop();
+      return open();
+    }
+    if (!holding && p <= 0) stopLoop();
+  };
+  const run = () => timer || (timer = setInterval(tick, 16));
+  const start = (e) => {
+    if (done) return;
+    e.preventDefault();
+    if (!holding) navigator.vibrate?.(8);
+    holding = true;
+    stage.classList.add('holding');
+    run();
+  };
+  const stop = () => {
+    if (!holding || done) return;
+    holding = false;
+    stage.classList.remove('holding');
+    if (p > 0.04) hint.textContent = 'آرام… انگشت را روی کتاب نگه دارید تا دیوان گشوده شود.';
+    run();
+  };
+  async function open() {
+    done = true;
+    holding = false;
+    navigator.vibrate?.([10, 70, 14]);
+    stage.classList.remove('holding');
+    stage.classList.add('opening');
+    hint.textContent = '';
+    try {
+      const [r] = await Promise.all([call('faal', {}), new Promise((res) => setTimeout(res, reduce ? 250 : 2100))]);
+      if (location.hash.startsWith('#/faal')) location.replace(`#/faal/${r.n}`);
+    } catch (err) {
+      el.view.innerHTML = `<div class="page">${offlineMessage('دیوان فال')}</div>`;
+    }
+  }
+
+  book.addEventListener('pointerdown', (e) => {
+    try {
+      book.setPointerCapture(e.pointerId); // keep the hold even if the finger drifts
+    } catch (err) {
+      /* not an active pointer: hold still works without capture */
+    }
+    start(e);
+  });
+  for (const ev of ['pointerup', 'pointercancel', 'lostpointercapture']) book.addEventListener(ev, stop);
+  book.addEventListener('contextmenu', (e) => e.preventDefault());
+  book.addEventListener('keydown', (e) => (e.key === ' ' || e.key === 'Enter') && !e.repeat && start(e));
+  book.addEventListener('keyup', (e) => (e.key === ' ' || e.key === 'Enter') && stop());
+  cleanup = stopLoop;
+}
+
+async function showFaalResult(n) {
+  let r;
+  try {
+    r = await call('faal', { n });
+  } catch (err) {
+    setHeader({ title: 'فال حافظ' });
+    el.view.innerHTML = `<div class="page">${offlineMessage('دیوان فال')}</div>`;
+    return;
+  }
+  const title = `غزل شمارهٔ ${fa(r.n)}`;
+  const spec = { title, poet: 'حافظ', section: 'فال حافظ', verses: r.verses, note: r.interpretation };
+  const text = `${r.verses.map((v) => v[1]).join('\n')}\n\nتعبیر: ${r.interpretation}\n\nحافظ، فال حافظ، ${title}\nارسال شده از دوست`;
+  setHeader({
+    title: 'فال حافظ',
+    actions: `<button class="icon-btn narrow-only" data-fa="share" aria-label="اشتراک‌گذاری" title="اشتراک‌گذاری">${icon('share')}</button>`,
+  });
+  el.view.innerHTML = `
+    <div class="page poem faal-result">
+      <nav class="crumbs"><a href="#/">خانه</a>${icon('next')}<a href="#/faal">فال حافظ</a></nav>
+      <header class="poem-head">
+        <div class="faal-kicker">${SHAMSEH}<span>فال شما</span></div>
+        <h2>${title}</h2>
+        <div class="by">حافظ</div>
+        <div class="poem-actions wide-only">
+          <button class="chip-btn" data-fa="share">${icon('share')} اشتراک</button>
+          <button class="chip-btn" data-fa="copy">${icon('copy')} رونوشت</button>
+          <a class="chip-btn" href="#/faal">${icon('feather')} نیتی دیگر</a>
+        </div>
+      </header>
+      <article class="verses faal-verses" id="verses">${verseBlocks(r.verses, '')}</article>
+      <section class="faal-interp" id="interp">
+        <div class="interp-head"><span></span>تعبیر<span></span></div>
+        <p>${esc(r.interpretation)}</p>
+      </section>
+      <div class="faal-again"><a class="btn" href="#/faal">${icon('feather')} نیتی دیگر</a></div>
+    </div>`;
+  // The ghazal unfolds beyt by beyt, then the interpretation.
+  const blocks = [...el.view.querySelectorAll('#verses .b')];
+  blocks.forEach((b, i) => (b.style.animationDelay = `${Math.min(i * 0.16, 2.4)}s`));
+  $('#interp').style.animationDelay = `${Math.min(blocks.length * 0.16, 2.4) + 0.4}s`;
+  fitVerses($('#verses'));
+  const onAct = async (e) => {
+    const a = e.target.closest('[data-fa]')?.dataset.fa;
+    if (a === 'share') openShareSheet(spec);
+    if (a === 'copy') {
+      await copyText(text);
+      toast('فال رونوشت شد');
+    }
+  };
+  el.view.onclick = onAct;
+  el.actions.onclick = onAct;
+}
+
 // ------------------------------------------------------------------ favorites
 
 async function showFavs(poetId) {
@@ -1167,6 +1432,7 @@ function startOfflineDownload() {
     for (let i = 0; i < meta.blockStarts.length; i++) files.push(`data/v/${i}.txt`);
     for (let i = 0; i < meta.shards; i++) files.push(`data/t/${i}.txt`);
     for (let i = 0; i < files.length; i++) files[i] += `?v=${meta.build}`;
+    if (meta.faal) files.push(`data/faal.txt?f=${meta.faal.v}&v=${meta.build}`);
     offline.total = files.length;
     offline.done = 0;
     const cache = await caches.open('doost-data-v1');

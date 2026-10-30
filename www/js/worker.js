@@ -22,6 +22,7 @@ let idToIdx;
 let titleList; // compact searchable list of poem titles
 let catList; // compact searchable list of category titles
 const blockCache = new Map();
+let faalRecords = null;
 const shardCache = new Map();
 const utf8 = new TextDecoder();
 
@@ -41,7 +42,7 @@ async function gunzipBytes(buf) {
 
 async function fetchBin(path) {
   // ?v=<build> keeps HTTP/service-worker caches consistent across data rebuilds.
-  const res = await fetch(new URL(`${path}?v=${meta.build}`, DATA));
+  const res = await fetch(new URL(`${path}${path.includes('?') ? '&' : '?'}v=${meta.build}`, DATA));
   if (!res.ok) throw new Error(`${path}: ${res.status}`);
   return gunzipBytes(await res.arrayBuffer());
 }
@@ -477,6 +478,28 @@ const handlers = {
   async resolve({ ids }) {
     await ready;
     return ids.map(resolveId);
+  },
+  // Faal Hafez: a separate collection (own numbering), unrelated to the Ganjoor poems.
+  // Without `n`, picks one uniformly at random.
+  async faal({ n }) {
+    await ready;
+    if (!meta.faal) throw new Error('faal data missing');
+    faalRecords ??= fetchBin(`faal.txt?f=${meta.faal.v}`)
+      .then((b) => utf8.decode(b).split('\x1e'))
+      .catch((e) => {
+        faalRecords = null;
+        throw e;
+      });
+    const recs = await faalRecords;
+    let i = n != null ? n - 1 : -1;
+    if (!(i >= 0 && i < recs.length)) {
+      const r = new Uint32Array(1);
+      crypto.getRandomValues(r);
+      i = r[0] % recs.length;
+    }
+    const [poem, interpretation] = recs[i].split('\x1f');
+    const lines = poem.split('\n');
+    return { n: i + 1, total: recs.length, verses: lines.map((t, k) => [k % 2, t]), interpretation };
   },
   async random({ scope }) {
     await ready;

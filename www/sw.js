@@ -7,6 +7,7 @@ const SHELL_FILES = [
   './',
   'index.html',
   'css/app.css',
+  'css/faal.css',
   'js/app.js',
   'js/worker.js',
   'js/normalize.js',
