@@ -18,11 +18,11 @@
 | Platform | Link |
 |---|---|
 | 🌐 Web | **[shahind.github.io/Doost](https://shahind.github.io/Doost/)** — installable as a PWA; Settings → «بارگیری همهٔ اشعار» makes it fully offline |
-| 🤖 Android | **[Doost-2.0.0.apk](https://github.com/shahind/Doost/releases/download/v2.0.0/Doost-2.0.0.apk)** (Android 7+). If you installed the 0.0.1 debug build, uninstall it first |
-| 🍏 iOS | **[Doost.ipa](https://github.com/shahind/Doost/releases/download/v2.0.0/Doost.ipa)** — unsigned; sign with AltStore / Sideloadly |
-| 🪟 Windows | **[Doost V2.0.0 x64](https://github.com/shahind/Doost/releases/download/v2.0.0/Doost-Setup-2.0.0.exe)** — silent install: `Doost-Setup-2.0.0.exe /S` |
-| 🪟 Windows - portable | **[Doost V2.0.0 x64 Portable](https://github.com/shahind/Doost/releases/download/v2.0.0/Doost-Portable-2.0.0.exe)** |
-| 🐧 Linux | **[AppImage](https://github.com/shahind/Doost/releases/download/v2.0.0/Doost-2.0.0.AppImage)** · **[.deb](https://github.com/shahind/Doost/releases/download/v2.0.0/doost_2.0.0_amd64.deb)** |
+| 🤖 Android | **[Doost-2.0.1.apk](https://github.com/shahind/Doost/releases/download/v2.0.1/Doost-2.0.1.apk)** (Android 7+). If you installed the 0.0.1 debug build, uninstall it first |
+| 🍏 iOS | **[Doost.ipa](https://github.com/shahind/Doost/releases/download/v2.0.1/Doost.ipa)** — unsigned; sign with AltStore / Sideloadly |
+| 🪟 Windows | **[Doost V2.0.1 x64](https://github.com/shahind/Doost/releases/download/v2.0.1/Doost-Setup-2.0.1.exe)** — silent install: `Doost-Setup-2.0.1.exe /S` |
+| 🪟 Windows - portable | **[Doost V2.0.1 x64 Portable](https://github.com/shahind/Doost/releases/download/v2.0.1/Doost-Portable-2.0.1.exe)** |
+| 🐧 Linux | **[AppImage](https://github.com/shahind/Doost/releases/download/v2.0.1/Doost-2.0.1.AppImage)** · **[.deb](https://github.com/shahind/Doost/releases/download/v2.0.1/doost_2.0.1_amd64.deb)** |
 
 All versions are available at [Releases Page](https://github.com/shahind/Doost/releases).
 

@@ -1,6 +1,6 @@
 {
   "name": "doost",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "private": true,
   "description": "Doost (دوست) — fast, lightweight, fully offline Persian poetry library (Ganjoor) for web, Android, iOS, Windows and Linux",
   "author": {

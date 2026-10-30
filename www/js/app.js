@@ -212,6 +212,7 @@ function showHome() {
   el.view.innerHTML = `
     <div class="page home-page">
       <a class="hero-search" href="#/search">${icon('search')}<span>جستجو در شاعران، عنوان‌ها و ابیات…</span></a>
+      ${offlineCard('home')}
       ${
         last
           ? `<a class="continue" href="#/poem/${last.id}?resume=1">${icon('book')}<span class="grow"><small>ادامهٔ خواندن · ${esc(last.poet)}</small><b>${esc(last.title)}</b></span>${icon('next')}</a>`
@@ -340,7 +341,8 @@ async function showPoet(id) {
     const bio = e.target.closest('#bio');
     if (bio) bio.classList.toggle('open');
   };
-  bios ??= await call('bios');
+  bios ??= await call('bios').catch(() => null); // offline and not cached yet: no bio
+  if (!bios) return $('#bio')?.remove();
   const b = $('#bio');
   if (b) b.textContent = bios[poet.idx] || '';
   if (b && !bios[poet.idx]) b.remove();
@@ -527,7 +529,15 @@ function poemText(p, verses) {
 }
 
 async function showPoem(id, params) {
-  const p = await call('poem', { id });
+  let p;
+  try {
+    p = await call('poem', { id });
+  } catch (err) {
+    // Its text block isn't cached and the network is unavailable.
+    setHeader({ title: 'شعر' });
+    el.view.innerHTML = `<div class="page">${offlineMessage('این شعر')}</div>`;
+    return;
+  }
   if (!p) {
     el.view.innerHTML = `<div class="page"><div class="empty">این شعر یافت نشد.</div></div>`;
     return;
@@ -841,7 +851,20 @@ async function runSearch(q, initial = false) {
 async function loadVerses(seq, first, cursor = first ? 0 : search.cursor) {
   if (search.loading && cursor === search.cursor && !first) return;
   search.loading = true;
-  const r = await call('verses', { q: search.q, scope: search.scope, cursor }).finally(() => (search.loading = false));
+  let r;
+  try {
+    r = await call('verses', { q: search.q, scope: search.scope, cursor });
+  } catch (err) {
+    // Index shards or text blocks aren't cached and the network is unavailable.
+    search.loading = false;
+    if (seq !== search.seq) return;
+    $('#verse-more')?.remove();
+    const sec = $('#verse-section');
+    if (sec) sec.insertAdjacentHTML(first ? 'afterbegin' : 'beforeend', offlineMessage('جستجو در متن اشعار'));
+    sec?.querySelector('.spinner')?.remove();
+    return;
+  }
+  search.loading = false;
   if (seq !== search.seq) return;
   // A page can end on its time budget before finding anything: keep scanning.
   if (!r.hits.length && r.cursor !== -1) {
@@ -1047,7 +1070,6 @@ const FONT_SIZES = [
 ];
 
 function openSettings() {
-  const canCache = 'serviceWorker' in navigator && 'caches' in window && !isNative && !isElectron && location.protocol === 'https:';
   openSheet(
     `<h3>تنظیمات</h3>
      <div class="field-label">پوسته</div>
@@ -1060,13 +1082,7 @@ function openSettings() {
        .join('')}</div>
      <div class="field-label">اندازهٔ متن شعر</div>
      <div class="seg" id="seg-font">${FONT_SIZES.map(([v, t]) => `<button data-v="${v}" class="${store.setting('font') === v ? 'on' : ''}">${t}</button>`).join('')}</div>
-     ${
-       canCache
-         ? `<div class="field-label">استفادهٔ آفلاین در مرورگر</div>
-            <button class="btn ghost" id="dl-all" style="width:100%">بارگیری همهٔ اشعار (حدود ۶۳ مگابایت)</button>
-            <div class="progress" id="dl-progress" hidden><span></span></div>`
-         : ''
-     }
+     ${canCache() ? `<div class="field-label">استفادهٔ بدون اینترنت</div>${offlineCard('settings')}` : ''}
      <div class="about"><b>دوست</b> — گنجینهٔ همراه شعر پارسی، کاملاً آفلاین.<br/>
        ${info ? `${fa(poets.length)} شاعر · ${fa(info.poems)} شعر · ${fa(info.verses)} بیت و مصراع` : ''}<br/>
        داده‌ها از گنجور (ganjoor.net).</div>
@@ -1086,44 +1102,133 @@ function openSettings() {
         applySettings();
         s.querySelectorAll('#seg-font button').forEach((x) => x.classList.toggle('on', x === b));
       };
-      $('#dl-all', s)?.addEventListener('click', downloadAll);
       s.querySelector('[data-close]').onclick = closeSheet;
     },
   );
 }
 $('#btn-settings').addEventListener('click', openSettings);
 
-// Web only: put every data file in the service-worker cache.
-async function downloadAll() {
-  const btn = $('#dl-all');
-  const bar = $('#dl-progress');
-  btn.disabled = true;
-  bar.hidden = false;
-  const meta = await fetch('data/meta.json', { cache: 'no-cache' }).then((r) => r.json());
-  const files = ['data/catalog.txt', 'data/poems.txt', 'data/bios.txt'];
-  for (let i = 0; i < meta.blockStarts.length; i++) files.push(`data/v/${i}.txt`);
-  for (let i = 0; i < meta.shards; i++) files.push(`data/t/${i}.txt`);
-  for (let i = 0; i < files.length; i++) files[i] += `?v=${meta.build}`;
-  const cache = await caches.open('doost-data-v1');
-  let done = 0;
-  const next = async () => {
-    while (files.length) {
-      const f = files.pop();
-      if (!(await cache.match(f))) {
-        const res = await fetch(f);
-        if (res.ok) await cache.put(f, res);
-      }
-      done++;
-      bar.firstElementChild.style.width = `${(100 * done) / (done + files.length)}%`;
-    }
-  };
+// ------------------------------------------------------------------ offline (web / PWA)
+// The native and desktop apps ship all data. On the web, poems are cached as they are read;
+// this saves everything at once so the PWA works fully offline. Completion is remembered per
+// data build, so a data update offers the download again.
+
+const OFFLINE_KEY = 'doost_offline';
+const offline = { running: null, done: 0, total: 0, failed: false };
+const canCache = () => 'serviceWorker' in navigator && 'caches' in window && !isNative && !isElectron && location.protocol === 'https:';
+function offlineReady() {
   try {
-    await Promise.all(Array.from({ length: 6 }, next));
-    btn.textContent = 'همهٔ اشعار برای استفادهٔ آفلاین ذخیره شد ✓';
+    return !!info && localStorage.getItem(OFFLINE_KEY) === info.build;
   } catch (e) {
-    btn.disabled = false;
-    btn.textContent = 'خطا در بارگیری؛ دوباره تلاش کنید';
+    return false;
   }
+}
+const offlineLater = () => {
+  try {
+    return sessionStorage.getItem('doost_offline_later') === '1';
+  } catch (e) {
+    return false;
+  }
+};
+
+// The offline call-to-action, shown on the home page, in Settings and in offline errors.
+function offlineCard(context) {
+  if (!canCache()) return '';
+  if (offlineReady())
+    return context === 'settings' ? `<div class="offline-ok">${icon('check')} همهٔ اشعار برای استفادهٔ بدون اینترنت ذخیره شده است.</div>` : '';
+  if (context === 'home' && offlineLater() && !offline.running) return '';
+  const pct = offline.total ? Math.round((100 * offline.done) / offline.total) : 0;
+  return `<div class="offline-card" data-offline-card="${context}">
+      <div class="oc-text"><b>${icon('book')} استفادهٔ بدون اینترنت</b>
+        <span>${offline.failed ? 'دریافت کامل نشد؛ دوباره تلاش کنید.' : 'همهٔ اشعار (حدود ۶۳ مگابایت) را یک‌بار دریافت کنید تا دوست بدون اینترنت هم کامل کار کند.'}</span></div>
+      <div class="progress" ${offline.running ? '' : 'hidden'}><span data-offline-bar style="width:${pct}%"></span></div>
+      <div class="oc-actions">
+        <button class="btn" data-offline-start ${offline.running ? 'disabled' : ''}>${offline.running ? `در حال دریافت… ${fa(pct)}٪` : 'دریافت همهٔ اشعار'}</button>
+        ${context === 'home' && !offline.running ? '<button class="btn ghost" data-offline-later>بعداً</button>' : ''}
+      </div>
+    </div>`;
+}
+
+function refreshOfflineCards() {
+  document.querySelectorAll('[data-offline-card]').forEach((c) => {
+    const html = offlineCard(c.dataset.offlineCard);
+    if (html) c.outerHTML = html;
+    else c.remove();
+  });
+}
+
+function startOfflineDownload() {
+  if (offline.running) return offline.running;
+  offline.failed = false;
+  offline.running = (async () => {
+    navigator.storage?.persist?.().catch(() => {}); // ask the browser not to evict it
+    const meta = await fetch('data/meta.json', { cache: 'no-cache' }).then((r) => r.json());
+    const files = ['data/catalog.txt', 'data/poems.txt', 'data/bios.txt'];
+    for (let i = 0; i < meta.blockStarts.length; i++) files.push(`data/v/${i}.txt`);
+    for (let i = 0; i < meta.shards; i++) files.push(`data/t/${i}.txt`);
+    for (let i = 0; i < files.length; i++) files[i] += `?v=${meta.build}`;
+    offline.total = files.length;
+    offline.done = 0;
+    const cache = await caches.open('doost-data-v1');
+    let failed = 0;
+    let lastPaint = 0;
+    const next = async () => {
+      while (files.length) {
+        const f = files.pop();
+        try {
+          if (!(await cache.match(f))) {
+            const res = await fetch(f);
+            if (res.ok) await cache.put(f, res);
+            else failed++;
+          }
+        } catch (e) {
+          failed++;
+        }
+        offline.done++;
+        if (performance.now() - lastPaint > 150) {
+          lastPaint = performance.now();
+          const pct = Math.round((100 * offline.done) / offline.total);
+          document.querySelectorAll('[data-offline-bar]').forEach((b) => (b.style.width = `${pct}%`));
+          document.querySelectorAll('[data-offline-start]').forEach((b) => (b.textContent = `در حال دریافت… ${fa(pct)}٪`));
+        }
+      }
+    };
+    await Promise.all(Array.from({ length: 6 }, next));
+    if (failed) throw new Error(`${failed} files failed`);
+    try {
+      localStorage.setItem(OFFLINE_KEY, meta.build);
+    } catch (e) {
+      /* storage unavailable: the card will just reappear */
+    }
+  })()
+    .then(() => toast('همهٔ اشعار برای استفادهٔ بدون اینترنت ذخیره شد'))
+    .catch(() => {
+      offline.failed = true;
+      toast('دریافت کامل نشد؛ اتصال اینترنت را بررسی کنید');
+    })
+    .finally(() => {
+      offline.running = null;
+      refreshOfflineCards();
+    });
+  refreshOfflineCards();
+  return offline.running;
+}
+
+document.addEventListener('click', (e) => {
+  if (e.target.closest('[data-offline-start]')) startOfflineDownload();
+  if (e.target.closest('[data-offline-later]')) {
+    try {
+      sessionStorage.setItem('doost_offline_later', '1');
+    } catch (err) {
+      /* ignore */
+    }
+    e.target.closest('[data-offline-card]')?.remove();
+  }
+});
+
+// Shown when something isn't available offline yet.
+function offlineMessage(what) {
+  return `<div class="empty">${icon('book')}<br/>${what} هنوز برای استفادهٔ بدون اینترنت ذخیره نشده است.<br/><small>به اینترنت وصل شوید، یا همهٔ اشعار را یک‌بار دریافت کنید.</small></div>${offlineCard('inline')}`;
 }
 
 // ------------------------------------------------------------------ start

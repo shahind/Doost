@@ -1437,3 +1437,63 @@ body.on-poem #btn-settings {
 html {
   background: var(--header);
 }
+
+/* ------------------------------------------------------------------ offline download (web) */
+
+.offline-card {
+  margin-top: 14px;
+  padding: 14px 16px;
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  border-inline-start: 4px solid var(--teal);
+}
+.offline-card .oc-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.86rem;
+  color: var(--text-2);
+  line-height: 1.9;
+}
+.offline-card .oc-text b {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--accent);
+  font-size: 0.95rem;
+}
+.offline-card .oc-text svg {
+  width: 19px;
+  height: 19px;
+}
+.offline-card .progress {
+  margin-top: 10px;
+}
+.offline-card .oc-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+.offline-card .oc-actions .btn:first-child {
+  flex: 1;
+}
+.offline-card .btn:disabled {
+  opacity: 0.85;
+  cursor: progress;
+}
+.offline-ok {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 0.88rem;
+}
+.offline-ok svg {
+  width: 18px;
+  height: 18px;
+  stroke-width: 2.4;
+}
