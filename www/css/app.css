@@ -46,6 +46,9 @@
   --poem-scale: 1;
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
+  /* Space under the bottom bar: the home indicator may overlap part of the inset, as in
+     native apps (the full inset left a tall empty strip on iPhones). */
+  --nav-pad: max(calc(var(--safe-bottom) - 18px), 0px);
   --nav-h: 64px;
   --ui: 'Estedad', system-ui, Tahoma, sans-serif;
   --poem: 'Amiri', 'Estedad', serif;
@@ -137,7 +140,11 @@ svg {
   display: flex;
   flex-direction: column;
 }
+/* Sticky with an opaque background: iOS Safari tints the status bar from a fixed/sticky top
+   bar; without one it fades the page background into the header. */
 .appbar {
+  position: sticky;
+  top: 0;
   background: var(--header);
   color: var(--on-header);
   padding-top: var(--safe-top);
@@ -222,7 +229,7 @@ svg {
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
   outline: 0;
-  padding-bottom: calc(var(--nav-h) + var(--safe-bottom) + 16px);
+  padding-bottom: calc(var(--nav-h) + var(--nav-pad) + 16px);
 }
 .page {
   max-width: 1000px;
@@ -240,8 +247,8 @@ svg {
 .bottom-nav {
   position: fixed;
   inset: auto 0 0 0;
-  height: calc(var(--nav-h) + var(--safe-bottom));
-  padding-bottom: var(--safe-bottom);
+  height: calc(var(--nav-h) + var(--nav-pad));
+  padding-bottom: var(--nav-pad);
   display: flex;
   background: color-mix(in srgb, var(--surface) 92%, transparent);
   backdrop-filter: blur(14px);
@@ -602,7 +609,7 @@ mark {
 .fab {
   position: fixed;
   inset-inline-end: 18px;
-  bottom: calc(var(--nav-h) + var(--safe-bottom) + 18px);
+  bottom: calc(var(--nav-h) + var(--nav-pad) + 18px);
   width: 56px;
   height: 56px;
   border-radius: 50%;
@@ -1423,4 +1430,10 @@ body.on-poem #btn-settings {
   100% {
     transform: translateX(0);
   }
+}
+
+/* iOS uses the root background for the status-bar area when it can't use the header: make it
+   the header color (body keeps the page color, and covers the whole viewport). */
+html {
+  background: var(--header);
 }
