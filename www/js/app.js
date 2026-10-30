@@ -1,5 +1,5 @@
 import * as store from './store.js';
-import { copyText, shareText, isNative, isElectron, plugin } from './platform.js';
+import { copyText, shareText, isNative, isElectron, plugin, lookupInYaad } from './platform.js';
 import { normalizeCompact, findMatches } from './normalize.js';
 
 // ------------------------------------------------------------------ worker RPC
@@ -464,23 +464,27 @@ function wordAt(x, y, root) {
   return t.slice(s, e).replace(/^‌+|‌+$/g, '');
 }
 
-async function lookupWord(word) {
+// Must run synchronously inside a click: browsers (iOS Safari especially) only let a page open
+// a new window directly from a user's tap, not after an await.
+function lookupWord(word) {
   word = (word || '').replace(/[^\p{L}\p{M}\p{N}‌ ]+/gu, ' ').trim();
   if (!word) return;
-  const { lookupInYaad } = await import('./platform.js');
-  toast(`«${word}» در «یاد» باز می‌شود…`);
   lookupInYaad(word);
+  toast(`«${word}» در «یاد» باز می‌شود…`);
 }
 
 // Selecting a word (double-click, or long-press on touch screens) offers a dictionary look-up.
 // The chip sits below the selection so it doesn't cover the system's own selection menu.
 let selChip = null;
 let selTimer;
+let chipPressed = false;
 function hideSelChip() {
   selChip?.remove();
   selChip = null;
+  chipPressed = false;
 }
 document.addEventListener('selectionchange', () => {
+  if (chipPressed) return; // tapping the chip may clear the selection first: keep the chip
   clearTimeout(selTimer);
   selTimer = setTimeout(() => {
     const sel = getSelection();
@@ -497,11 +501,15 @@ document.addEventListener('selectionchange', () => {
     const w = selChip.offsetWidth;
     selChip.style.left = `${Math.min(innerWidth - w - 8, Math.max(8, rect.left + rect.width / 2 - w / 2))}px`;
     selChip.style.top = `${Math.min(innerHeight - 60, rect.bottom + 12)}px`;
-    // pointerdown (not click) so the selection is still there when we read it.
+    // The word is captured now; the look-up runs on click (a real user gesture, so the browser
+    // allows opening Yaad). pointerdown only keeps the selection from collapsing first.
     selChip.addEventListener('pointerdown', (e) => {
+      chipPressed = true;
       e.preventDefault();
-      hideSelChip();
+    });
+    selChip.addEventListener('click', () => {
       lookupWord(text);
+      hideSelChip();
     });
   }, 250);
 });

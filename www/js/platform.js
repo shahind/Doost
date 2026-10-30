@@ -59,7 +59,7 @@ export async function shareText(title, text) {
 const YAAD_WEB = 'https://shahind.github.io/Yaad/';
 export async function lookupInYaad(word) {
   const q = encodeURIComponent(word.trim());
-  const web = `${YAAD_WEB}#/?q=${q}&go=1`;
+  const web = `${YAAD_WEB}#/?q=${q}`; // Yaad shows its search results for the word
   if (isNative) {
     const launcher = plugin('AppLauncher');
     const app = `yaad://search?q=${q}`;
