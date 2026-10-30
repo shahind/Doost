@@ -1096,6 +1096,21 @@ const INVOCATION = [
   'برایم آشکار و آرزوی مرا برآورده سازی.',
 ];
 
+// The reveal animations start blurred. Once one ends, drop the animation from its element so
+// no blur/compositing layer is left behind (iOS Safari could keep the text blurred).
+el.view.addEventListener('animationend', (e) => {
+  if (e.animationName === 'invocation' || e.animationName === 'verse-in') e.target.style.animation = 'none';
+});
+// Safety net: browsers may pause animations (app in background, element off-screen), and then
+// `animationend` never comes. After the longest reveal should be over, clear them all anyway.
+function settleReveal(ms) {
+  const page = el.view.firstElementChild;
+  setTimeout(() => {
+    if (!page?.isConnected) return;
+    page.querySelectorAll('.faal-invocation span, #verses .b, .faal-interp').forEach((e) => (e.style.animation = 'none'));
+  }, ms);
+}
+
 function showFaal() {
   setHeader({ title: 'فال حافظ' });
   el.view.onclick = null;
@@ -1127,6 +1142,7 @@ function showFaal() {
   const book = $('#divan');
   const hint = $('#faal-hint');
   call('faal', { n: 1 }).catch(() => {}); // warm the data while the user reads
+  settleReveal(0.25 * 1000 + INVOCATION.length * 450 + 1400 + 300); // last line's delay + duration
   const HOLD = reduce ? 900 : 2600;
   const HINTS = [
     [0, 'در دل نیت کنید…'],
@@ -1242,7 +1258,9 @@ async function showFaalResult(n) {
   // The ghazal unfolds beyt by beyt, then the interpretation.
   const blocks = [...el.view.querySelectorAll('#verses .b')];
   blocks.forEach((b, i) => (b.style.animationDelay = `${Math.min(i * 0.16, 2.4)}s`));
-  $('#interp').style.animationDelay = `${Math.min(blocks.length * 0.16, 2.4) + 0.4}s`;
+  const interpDelay = Math.min(blocks.length * 0.16, 2.4) + 0.4;
+  $('#interp').style.animationDelay = `${interpDelay}s`;
+  settleReveal((interpDelay + 0.9) * 1000 + 300); // interpretation's delay + duration
   fitVerses($('#verses'));
   const onAct = async (e) => {
     const a = e.target.closest('[data-fa]')?.dataset.fa;

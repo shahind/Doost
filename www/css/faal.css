@@ -113,11 +113,12 @@ svg.shamseh {
   color: var(--text-2);
 }
 .faal-invocation span {
-  animation: invocation 1.4s ease-out both;
+  animation: invocation 1.4s ease-out backwards;
 }
 @keyframes invocation {
   from {
     opacity: 0;
+    filter: blur(3px);
     transform: translateY(4px);
   }
 }
@@ -336,11 +337,12 @@ svg.shamseh {
   height: 22px;
 }
 .faal-result .b {
-  animation: verse-in 0.8s ease-out both;
+  animation: verse-in 0.8s ease-out backwards;
 }
 @keyframes verse-in {
   from {
     opacity: 0;
+    filter: blur(2px);
     transform: translateY(6px);
   }
 }
@@ -351,7 +353,7 @@ svg.shamseh {
   background: var(--surface);
   box-shadow: var(--shadow);
   border: 1px solid var(--gold-soft);
-  animation: verse-in 0.9s ease-out both;
+  animation: verse-in 0.9s ease-out backwards;
 }
 .interp-head {
   display: flex;
