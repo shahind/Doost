@@ -7,3 +7,6 @@ electron/dist-desktop*/
 .DS_Store
 Thumbs.db
 .claude
+
+# Cafe Bazaar bundlesigner (downloaded by the Gradle bazaarBin task)
+tools/bazaar/
