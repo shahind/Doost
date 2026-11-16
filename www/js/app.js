@@ -39,6 +39,11 @@ const el = {
   toast: $('#toast'),
 };
 const mobile = () => matchMedia('(max-width: 899px)').matches;
+// Web version only: where to get the Android app.
+const bazaarLink = (cls = '') =>
+  isNative || isElectron
+    ? ''
+    : `${cls ? `<div class="${cls}">` : '<br/>'}<a class="store-link" href="https://cafebazaar.ir/app/com.shahinsoft.doost" target="_blank" rel="noopener">دریافت نسخهٔ اندروید از کافه‌بازار</a>${cls ? '</div>' : ''}`;
 
 let toastTimer;
 function toast(msg) {
@@ -231,6 +236,7 @@ function showHome() {
       ${[...groups]
         .map(([l, ps]) => `<div class="letter-head" id="L-${esc(l)}">${esc(l)}</div><div class="poets">${ps.map(card).join('')}</div>`)
         .join('')}
+      ${bazaarLink('home-store')}
     </div>
     <button class="fab" id="fab" aria-label="شعر تصادفی" title="شعر تصادفی">${icon('shuffle')}</button>`;
   el.view.onclick = (e) => {
@@ -1376,7 +1382,7 @@ function openSettings() {
      ${canCache() ? `<div class="field-label">استفادهٔ بدون اینترنت</div>${offlineCard('settings')}` : ''}
      <div class="about"><b>دوست</b> — گنجینهٔ همراه شعر پارسی، کاملاً آفلاین.<br/>
        ${info ? `${fa(poets.length)} شاعر · ${fa(info.poems)} شعر · ${fa(info.verses)} بیت و مصراع` : ''}<br/>
-       داده‌ها از گنجور (ganjoor.net).</div>
+       داده‌ها از گنجور (ganjoor.net).${bazaarLink()}</div>
      <div class="sheet-row"><button class="btn ghost" data-close>بستن</button></div>`,
     (s) => {
       $('#seg-theme', s).onclick = (e) => {

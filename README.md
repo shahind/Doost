@@ -5,10 +5,11 @@
   A fast, lightweight, fully offline Persian poetry library (Ganjoor) for Web, Android, iOS, Windows and Linux.</p>
   <p><a href="https://shahind.github.io/Doost/"><b>▶ Open the web version</b></a></p>
 
-[![Android](https://img.shields.io/badge/Android-3DDC84?logo=android&logoColor=white)](https://github.com/shahind/Doost/releases)
-[![iOS](https://img.shields.io/badge/iOS-000000?&logo=apple&logoColor=white)](https://github.com/shahind/Doost/releases)
 [![Windows](https://custom-icon-badges.demolab.com/badge/Windows-0078D6?logo=windows11&logoColor=white)](https://github.com/shahind/Doost/releases)
 [![Linux](https://img.shields.io/badge/Linux-FCC624?logo=linux&logoColor=black)](https://github.com/shahind/Doost/releases)
+[![iOS](https://img.shields.io/badge/iOS-000000?logo=apple&logoColor=white)](https://github.com/shahind/Doost/releases)
+[![Google Play](https://img.shields.io/badge/Google_Play-414141?logo=googleplay&logoColor=white)](https://github.com/shahind/Doost/releases)
+[![Bazaar](https://img.shields.io/badge/Bazaar-2BAE66?logo=data:image/svg%2bxml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCAyNCAyNCc+PHBhdGggZD0nTTQuNSA4aDE1bC0xLjIgMTIuNUg1Ljd6JyBmaWxsPSd3aGl0ZScvPjxwYXRoIGQ9J004LjUgOFY2LjhhMy41IDMuNSAwIDAgMSA3IDBWOCcgZmlsbD0nbm9uZScgc3Ryb2tlPSd3aGl0ZScgc3Ryb2tlLXdpZHRoPScyJy8+PC9zdmc+&logoColor=white)](https://cafebazaar.ir/app/com.shahinsoft.doost)
 </div>
 
 ---
@@ -18,11 +19,12 @@
 | Platform | Link |
 |---|---|
 | 🌐 Web | **[shahind.github.io/Doost](https://shahind.github.io/Doost/)** — installable as a PWA; Settings → «بارگیری همهٔ اشعار» makes it fully offline |
-| 🤖 Android | **[Doost-2.1.0.apk](https://github.com/shahind/Doost/releases/download/v2.1.0/Doost-2.1.0.apk)** (Android 7+). If you installed the 0.0.1 debug build, uninstall it first |
-| 🍏 iOS | **[Doost.ipa](https://github.com/shahind/Doost/releases/download/v2.1.0/Doost.ipa)** — unsigned; sign with AltStore / Sideloadly |
-| 🪟 Windows | **[Doost V2.1.0 x64](https://github.com/shahind/Doost/releases/download/v2.1.0/Doost-Setup-2.1.0.exe)** — silent install: `Doost-Setup-2.1.0.exe /S` |
-| 🪟 Windows - portable | **[Doost V2.1.0 x64 Portable](https://github.com/shahind/Doost/releases/download/v2.1.0/Doost-Portable-2.1.0.exe)** |
-| 🐧 Linux | **[AppImage](https://github.com/shahind/Doost/releases/download/v2.1.0/Doost-2.1.0.AppImage)** · **[.deb](https://github.com/shahind/Doost/releases/download/v2.1.0/doost_2.1.0_amd64.deb)** |
+| 🛍️ Bazaar | **[cafebazaar.ir/app/com.shahinsoft.doost](https://cafebazaar.ir/app/com.shahinsoft.doost)** |
+| 🤖 Android | **[Doost-2.1.1.apk](https://github.com/shahind/Doost/releases/download/v2.1.1/Doost-2.1.1.apk)** (Android 7+). If you installed the 0.0.1 debug build, uninstall it first |
+| 🍏 iOS | **[Doost.ipa](https://github.com/shahind/Doost/releases/download/v2.1.1/Doost.ipa)** — unsigned; sign with AltStore / Sideloadly |
+| 🪟 Windows | **[Doost V2.1.1 x64](https://github.com/shahind/Doost/releases/download/v2.1.1/Doost-Setup-2.1.1.exe)** — silent install: `Doost-Setup-2.1.1.exe /S` |
+| 🪟 Windows - portable | **[Doost V2.1.1 x64 Portable](https://github.com/shahind/Doost/releases/download/v2.1.1/Doost-Portable-2.1.1.exe)** |
+| 🐧 Linux | **[AppImage](https://github.com/shahind/Doost/releases/download/v2.1.1/Doost-2.1.1.AppImage)** · **[.deb](https://github.com/shahind/Doost/releases/download/v2.1.1/doost_2.1.1_amd64.deb)** |
 
 All versions are available at [Releases Page](https://github.com/shahind/Doost/releases).
 

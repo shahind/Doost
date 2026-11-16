@@ -65,7 +65,7 @@ export async function lookupInYaad(word) {
     const app = `yaad://search?q=${q}`;
     try {
       // Android checks the package; iOS checks the URL scheme (declared in Info.plist).
-      const probe = cap.getPlatform() === 'android' ? 'io.github.shahind.yaad' : 'yaad://';
+      const probe = cap.getPlatform() === 'android' ? 'com.shahinsoft.yaad' : 'yaad://';
       const { value } = await launcher.canOpenUrl({ url: probe });
       if (value) {
         await launcher.openUrl({ url: app });

@@ -1503,3 +1503,14 @@ html,
 body {
   touch-action: manipulation;
 }
+
+/* Web version: link to the Android app */
+.store-link {
+  color: var(--accent);
+  font-weight: 700;
+}
+.home-store {
+  text-align: center;
+  font-size: 0.85rem;
+  margin: 26px 0 8px;
+}

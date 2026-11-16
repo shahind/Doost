@@ -37,7 +37,7 @@
 
     <!-- Lets Doost check for and open the Yaad dictionary app (yaad://search?q=word). -->
     <queries>
-        <package android:name="io.github.shahind.yaad" />
+        <package android:name="com.shahinsoft.yaad" />
         <intent>
             <action android:name="android.intent.action.VIEW" />
             <data android:scheme="yaad" />

@@ -1,6 +1,6 @@
 # Google Play listing — Doost (دوست)
 
-Package: `com.shahinsoft.doost` · Version **2.1.0** (versionCode 4)
+Package: `com.shahinsoft.doost` · Version **2.1.1** (versionCode 5)
 
 ## Files to upload
 
