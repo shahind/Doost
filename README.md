@@ -79,5 +79,5 @@ npm run serve        # open http://localhost:5173
 
 ## Credits
 
-- Poetry: [Ganjoor](https://ganjoor.net) (گنجور).
+- Poetry: Ganjoor (گنجور), from [ganjoor/desktop](https://github.com/ganjoor/desktop) and [ganjoor/ganjoor-data](https://github.com/ganjoor/ganjoor-data).
 - Fonts: Amiri and Estedad (SIL Open Font License).
