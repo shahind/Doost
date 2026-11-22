@@ -1,6 +1,6 @@
 # Google Play listing — Doost (دوست)
 
-Package: `com.shahinsoft.doost` · Version **2.1.1** (versionCode 5)
+Package: `com.shahinsoft.doost` · Version **2.1.2** (versionCode 6)
 
 ## Files to upload
 
@@ -44,7 +44,7 @@ Doost is a pocket library of Persian poetry: the works of 237 poets and writers,
 - **Target audience:** 13+ (general audience; not designed for children)
 - **Credits:** poetry texts from Ganjoor (ganjoor.net)
 
-## What's new in 2.1.0
+## What's new in 2.1.2
 
-- فارسی: فال حافظ؛ نیت کنید و دیوان را بگشایید. جستجوی معنی هر واژه در لغت‌نامهٔ «یاد» با لمس آن. دریافت یک‌جای همهٔ اشعار برای نسخهٔ وب.
-- English: Faal-e Hafez: form your intention and open the Divan. Tap any word to look it up in the Yaad dictionary. One-tap offline download for the web version.
+- فارسی: پیوند دریافت «دوست» به متن و تصویر شعرهای هم‌رسانی‌شده افزوده شد. نگه‌داشتن انگشت روی متن، دوباره فقط برای انتخاب و رونوشت است و جستجو در لغت‌نامه با لمس بیت انجام می‌شود.
+- English: Shared poems, as text or image, now include a link to get Doost. Long-press is back to plain text selection and copying; tap a verse to look up a word in the dictionary.
