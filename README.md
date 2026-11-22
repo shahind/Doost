@@ -1,124 +1,83 @@
 <div align="center">
   <img src="www/icons/icon-192.png" width="96" alt="Doost logo" />
   <h1>دوست · Doost</h1>
-  <p><b>گنجینهٔ همراه شعر پارسی — سریع، سبک و کاملاً آفلاین</b><br/>
-  A fast, lightweight, fully offline Persian poetry library (Ganjoor) for Web, Android, iOS, Windows and Linux.</p>
-  <p><a href="https://shahind.github.io/Doost/"><b>▶ Open the web version</b></a></p>
+  <p><b>گنجینهٔ همراه شعر پارسی، سریع، سبک و کاملاً آفلاین</b><br/>
+  A pocket library of Persian poetry: fast, lightweight and fully offline.</p>
 
   <p>
-  <a href="https://github.com/shahind/Doost/releases"><img alt="Windows" src="https://custom-icon-badges.demolab.com/badge/Windows-0078D6?logo=windows11&logoColor=white&style=for-the-badge" width="161"></a>
-  <a href="https://github.com/shahind/Doost/releases"><img alt="Linux" src="https://img.shields.io/badge/Linux-FCC624?logo=linux&logoColor=black&style=for-the-badge" width="123"></a>
-  <a href="https://github.com/shahind/Doost/releases"><img alt="iOS" src="https://img.shields.io/badge/iOS-000000?logo=apple&logoColor=white&style=for-the-badge" width="99"></a>
-  <a href="https://github.com/shahind/Doost/releases"><img alt="Google Play" src="https://img.shields.io/badge/Google_Play-414141?logo=googleplay&logoColor=white&style=for-the-badge" width="194"></a>
+  <a href="https://github.com/shahind/Doost/releases/latest"><img alt="Windows" src="https://custom-icon-badges.demolab.com/badge/Windows-0078D6?logo=windows11&logoColor=white&style=for-the-badge" width="161"></a>
+  <a href="https://github.com/shahind/Doost/releases/latest"><img alt="Linux" src="https://img.shields.io/badge/Linux-FCC624?logo=linux&logoColor=black&style=for-the-badge" width="123"></a>
+  <a href="https://github.com/shahind/Doost/releases/latest"><img alt="iOS" src="https://img.shields.io/badge/iOS-000000?logo=apple&logoColor=white&style=for-the-badge" width="99"></a>
+  <a href="https://github.com/shahind/Doost/releases/latest"><img alt="Google Play" src="https://img.shields.io/badge/Google_Play-414141?logo=googleplay&logoColor=white&style=for-the-badge" width="194"></a>
   <a href="https://cafebazaar.ir/app/com.shahinsoft.doost"><img alt="Bazaar" src="https://img.shields.io/badge/Bazaar-2BAE66?logo=data:image/svg%2bxml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCAyNCAyNCc+PHBhdGggZD0nTTQuNSA4aDE1bC0xLjIgMTIuNUg1Ljd6JyBmaWxsPSd3aGl0ZScvPjxwYXRoIGQ9J004LjUgOFY2LjhhMy41IDMuNSAwIDAgMSA3IDBWOCcgZmlsbD0nbm9uZScgc3Ryb2tlPSd3aGl0ZScgc3Ryb2tlLXdpZHRoPScyJy8+PC9zdmc+&logoColor=white&style=for-the-badge" width="139"></a>
   </p>
-</div>
+  <p><a href="https://shahind.github.io/Doost/"><b>▶ Open the web version</b></a></p>
 
----
+  <img src="docs/screenshots/desktop.png" alt="Doost on desktop" width="820" />
+  <br/><br/>
+  <img src="docs/screenshots/mobile-home.png" alt="Home" width="200" />&nbsp;
+  <img src="docs/screenshots/mobile-poem.png" alt="A poem" width="200" />&nbsp;
+  <img src="docs/screenshots/mobile-faal.png" alt="Faal-e Hafez" width="200" />
+</div>
 
 ## Download
 
-| Platform | Link |
+| Platform | |
 |---|---|
-| 🌐 Web | **[shahind.github.io/Doost](https://shahind.github.io/Doost/)** — installable as a PWA; Settings → «بارگیری همهٔ اشعار» makes it fully offline |
-| 🛍️ Bazaar | **[cafebazaar.ir/app/com.shahinsoft.doost](https://cafebazaar.ir/app/com.shahinsoft.doost)** |
-| 🤖 Android | **[Doost-2.1.1.apk](https://github.com/shahind/Doost/releases/download/v2.1.1/Doost-2.1.1.apk)** (Android 7+). If you installed the 0.0.1 debug build, uninstall it first |
-| 🍏 iOS | **[Doost.ipa](https://github.com/shahind/Doost/releases/download/v2.1.1/Doost.ipa)** — unsigned; sign with AltStore / Sideloadly |
-| 🪟 Windows | **[Doost V2.1.1 x64](https://github.com/shahind/Doost/releases/download/v2.1.1/Doost-Setup-2.1.1.exe)** — silent install: `Doost-Setup-2.1.1.exe /S` |
-| 🪟 Windows - portable | **[Doost V2.1.1 x64 Portable](https://github.com/shahind/Doost/releases/download/v2.1.1/Doost-Portable-2.1.1.exe)** |
-| 🐧 Linux | **[AppImage](https://github.com/shahind/Doost/releases/download/v2.1.1/Doost-2.1.1.AppImage)** · **[.deb](https://github.com/shahind/Doost/releases/download/v2.1.1/doost_2.1.1_amd64.deb)** |
-
-All versions are available at [Releases Page](https://github.com/shahind/Doost/releases).
-
-### Microsoft Store
-
-The [desktop workflow](.github/workflows/desktop.yml) also builds a Store package (`Doost-<version>-store.appx`, MSIX)
-once the Partner Center identity is set as repository variables (`MS_STORE_IDENTITY_NAME`, `MS_STORE_PUBLISHER`,
-`MS_STORE_PUBLISHER_NAME` — from Partner Center → the app → Product identity). Upload that file in the submission;
-Microsoft signs it, so no code-signing certificate is needed.
+| Web | [shahind.github.io/Doost](https://shahind.github.io/Doost/), installable, works offline |
+| Android | [Cafe Bazaar](https://cafebazaar.ir/app/com.shahinsoft.doost) or the `.apk` from [Releases](https://github.com/shahind/Doost/releases/latest) |
+| iOS | unsigned `.ipa` from [Releases](https://github.com/shahind/Doost/releases/latest) (install with AltStore or Sideloadly) |
+| Windows | installer or portable `.exe` from [Releases](https://github.com/shahind/Doost/releases/latest) |
+| Linux | `.AppImage` or `.deb` from [Releases](https://github.com/shahind/Doost/releases/latest) |
 
 ## Features
 
-- **237 poets, 2,246 books & sections, 133,159 poems, 3 million verses** — browse poet → book →
-  section → poem, with breadcrumbs, previous / next poem (buttons, swipe, ← → keys).
-- **Instant search** in poet names, book / section titles, poem titles and **the text of every verse**.
-  Diacritics, ZWNJ / spaces, and Arabic letter forms (ي ك ة …) don't matter. Matches are word-start
-  aware («دل» finds «دل» and «دلبر», not «بیدل»). Results stream page by page, famous poets first.
-- **Scoped search**: all poets, one poet, or any book / section of a poet.
-- Classic couplet layout: side-by-side half-lines on wide screens, staggered on phones;
-  centered tarji'/tarkib bands, free verse and prose rendered appropriately.
-- **Favorites** (grouped by poet), featured poets, recent searches, **continue reading** where you left off.
-- Share / copy a whole poem **or a single beyt** (tap a verse).
-- Poet biographies, random poem (everywhere, per poet, per section).
-- **فال حافظ**: make an intention, hold the closed Divan until it opens, and read the ghazal with its
-  interpretation (495 ghazals from `db/faal.txt`, a separate collection that is never mixed with
-  Ganjoor). From the home screen or Hafez's page; shareable as text or image.
-- **Look up a word in Yaad** (the Dehkhoda dictionary): tap a verse and choose «… در لغت‌نامه», or
-  select a word (double-click / long-press). Opens the Yaad app if installed (`yaad://search?q=…`),
-  otherwise [Yaad on the web](https://shahind.github.io/Yaad/) — on Android an installed Yaad PWA
-  can capture that link.
-- Light / dark / automatic theme, adjustable poem text size.
-- **100% offline**. The web version caches what you read (or everything, from Settings).
+- **237 poets and 133,000 poems** (3 million verses), from Hafez, Saadi, Rumi and Ferdowsi to modern poets.
+- **Search everything**: poet names, poem titles and the text of every verse. Half-spaces and diacritics don't matter. Search all poets, one poet or one book.
+- Poems in the traditional **couplet layout**.
+- **Faal-e Hafez**: form your intention, open the Divan and read the ghazal with its interpretation.
+- **Tap a word** to look up its meaning in the [Yaad](https://github.com/shahind/Yaad) dictionary.
+- **Bookmarks**, continue reading where you left off, and sharing a verse or a poem as text or image.
+- Light and dark themes, adjustable text size.
+- **No internet needed**, no ads, no data collected.
 
-Existing users keep their favorites, featured poets and theme: the same storage keys are used,
-and the desktop app keeps the same origin and profile folder.
+---
 
-## Performance
+## For developers
 
-| | Before (sql.js) | Now |
-|---|---|---|
-| Shipped data | 341 MB SQLite file loaded fully into WASM memory | **≈ 63 MB**, loaded on demand |
-| Startup | download / parse 341 MB | ≈ 100–250 ms (1 MB catalog) |
-| Verse search | `LIKE '%…%'` on the UI thread, 50 results, no normalization | 15–120 ms per page in a Web Worker, unlimited, normalized |
-| Fonts | 1.1 MB TTF | 325 KB WOFF2 (subset) |
+### Why it is fast and light
 
-## How it works
+- The 341 MB SQLite database is packed into **63 MB** of compressed data, and the app no longer loads a whole database into memory.
+- At startup the app reads only a **1 MB catalog**, in 100–250 ms. Verses are stored in small blocks and loaded only when needed. Persian text is re-encoded to one byte per letter before compression.
+- Poems are stored in reading order, so the next poem is usually already loaded and "search in this poet" is just a range.
+- Verse search uses a prefix-sharded word index in a Web Worker: **15–120 ms** per page of results, without blocking the screen.
+- The fonts are subset WOFF2 files: 325 KB instead of 1.1 MB.
 
-[`tools/build-data.mjs`](tools/build-data.mjs) converts `db/ganjoor.s3db` (Git LFS) into `www/data/`:
+### Technology
 
-| File | Content |
-|---|---|
-| `catalog.txt` | poets, the section tree and all poem titles (1 MB gzip) — loaded at startup |
-| `poems.txt`, `bios.txt` | Ganjoor poem ids & section of each poem; poet biographies (lazy) |
-| `v/<n>.txt` | verse text in ~64 KB blocks, transcoded to a single-byte charset before gzip |
-| `t/<n>.txt` | inverted index word → poems, sharded by word prefix (supports prefix search) |
+Plain **JavaScript, HTML and CSS**, with no framework and no bundler. **Capacitor** wraps it for Android and iOS, and **Electron** for Windows and Linux. The data is built with **Node.js** scripts in `tools/`.
 
-Poems are stored in **reading order**: poets by Ganjoor id (≈ prominence), then each poet's book
-tree. So the next poem is usually in an already-loaded block, "search within this poet / book"
-is just a range, and results naturally list Hafez, Khayyam, Ferdowsi, Molana… first.
-A query intersects the posting lists of its words (the last word as a prefix), then verifies the
-exact phrase in the candidate poems' verses.
+### Run, test, build
 
-## Project layout
-
-```
-db/ganjoor.s3db     source database (Git LFS)
-tools/              data builder, search smoke test, dev server, Pages deploy
-www/                the app (vanilla JS, no framework, no bundler)
-  js/app.js           UI          js/worker.js   data & search engine (Web Worker)
-  data/               generated (git-ignored): npm run build:data
-electron/main.cjs   desktop shell (Windows / Linux)
-android/, ios/      Capacitor native projects
-assets/             icon & splash sources
-```
-
-## Build
-
-Requires Node.js 22+ and `git lfs pull` (for the database).
+Needs Node.js 22+ and [Git LFS](https://git-lfs.com) (the source database is stored with it).
 
 ```bash
+git lfs pull
 npm install
-npm run build:data      # db/ganjoor.s3db -> www/data (~2.5 minutes)
-npm test                # search smoke tests
-npm run serve           # http://localhost:5173
+npm run build:data   # build the poetry data into www/data
+npm test             # search tests
+npm run serve        # open http://localhost:5173
 ```
 
-- **Desktop:** `npm run electron` · `npm run dist:win` · `npm run dist:linux`
-- **Android:** `npx cap sync android`, then `cd android && ./gradlew assembleDebug` (or `npm run android`)
-- **iOS:** `npm run ios` on macOS; CI builds an unsigned IPA ([`ios-build.yml`](.github/workflows/ios-build.yml))
-- **Web:** `npm run build:data && bash tools/deploy-pages.sh` publishes `www/` to `gh-pages`
+| Target | Command |
+|---|---|
+| Desktop app | `npm run electron` |
+| Windows build | `npm run dist:win` |
+| Linux build | `npm run dist:linux` |
+| Android | `npm run android` (opens Android Studio) |
+| iOS | `npm run ios` (opens Xcode, macOS only) |
 
 ## Credits
 
-- Poetry database: [Ganjoor](https://ganjoor.net) (گنجور).
-- Fonts: Amiri and Estedad — SIL Open Font License.
+- Poetry: [Ganjoor](https://ganjoor.net) (گنجور).
+- Fonts: Amiri and Estedad (SIL Open Font License).

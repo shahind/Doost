@@ -1,5 +1,8 @@
 import * as store from './store.js';
-import { copyText, shareText, isNative, isElectron, plugin, lookupInYaad } from './platform.js';
+import { copyText, shareText, isNative, isElectron, plugin, lookupInYaad, appLink } from './platform.js';
+
+const SHARE_LINK = appLink('com.shahinsoft.doost', 'https://shahind.github.io/Doost/');
+const SIGNATURE = `ارسال شده از دوست\n${SHARE_LINK}`;
 import { normalizeCompact, findMatches } from './normalize.js';
 
 // ------------------------------------------------------------------ worker RPC
@@ -479,48 +482,6 @@ function lookupWord(word) {
   toast(`«${word}» در «یاد» باز می‌شود…`);
 }
 
-// Selecting a word (double-click, or long-press on touch screens) offers a dictionary look-up.
-// The chip sits below the selection so it doesn't cover the system's own selection menu.
-let selChip = null;
-let selTimer;
-let chipPressed = false;
-function hideSelChip() {
-  selChip?.remove();
-  selChip = null;
-  chipPressed = false;
-}
-document.addEventListener('selectionchange', () => {
-  if (chipPressed) return; // tapping the chip may clear the selection first: keep the chip
-  clearTimeout(selTimer);
-  selTimer = setTimeout(() => {
-    const sel = getSelection();
-    const text = String(sel).trim();
-    const inPoem = sel.rangeCount && sel.anchorNode && sel.anchorNode.parentElement?.closest('.verses');
-    if (!text || !inPoem || text.length > 40 || text.split(/\s+/).length > 3) return hideSelChip();
-    const rect = sel.getRangeAt(0).getBoundingClientRect();
-    if (!rect.width && !rect.height) return hideSelChip();
-    hideSelChip();
-    selChip = document.createElement('button');
-    selChip.className = 'sel-chip';
-    selChip.innerHTML = `${icon('book')} جستجوی «${esc(text)}» در لغت‌نامه`;
-    document.body.append(selChip);
-    const w = selChip.offsetWidth;
-    selChip.style.left = `${Math.min(innerWidth - w - 8, Math.max(8, rect.left + rect.width / 2 - w / 2))}px`;
-    selChip.style.top = `${Math.min(innerHeight - 60, rect.bottom + 12)}px`;
-    // The word is captured now; the look-up runs on click (a real user gesture, so the browser
-    // allows opening Yaad). pointerdown only keeps the selection from collapsing first.
-    selChip.addEventListener('pointerdown', (e) => {
-      chipPressed = true;
-      e.preventDefault();
-    });
-    selChip.addEventListener('click', () => {
-      lookupWord(text);
-      hideSelChip();
-    });
-  }, 250);
-});
-el.view.addEventListener('scroll', hideSelChip, { passive: true });
-
 // Small dropdown menu anchored to a button.
 let menuEl = null;
 function closeMenu() {
@@ -549,7 +510,7 @@ function openMenu(anchor, items) {
 // Share sheet: text preview, copy, system share, and share as picture.
 function openShareSheet(spec) {
   const note = spec.note ? `\n\nتعبیر: ${spec.note}` : '';
-  const text = `${spec.verses.map((v) => v[1]).join('\n')}${note}\n\n${spec.poet}، ${spec.beyt ? '' : spec.section + '، '}${spec.title}\nارسال شده از دوست`;
+  const text = `${spec.verses.map((v) => v[1]).join('\n')}${note}\n\n${spec.poet}، ${spec.beyt ? '' : spec.section + '، '}${spec.title}\n${SIGNATURE}`;
   openSheet(
     `<h3>${spec.beyt ? 'اشتراک‌گذاری بیت' : 'اشتراک‌گذاری شعر'}</h3>
      <div class="share-preview">${esc(text)}</div>
@@ -577,7 +538,7 @@ function openShareSheet(spec) {
           act.querySelector('span').textContent = 'در حال ساختن تصویر…';
           try {
             const { renderPoemImage, shareImage } = await import('./share.js');
-            const blob = await renderPoemImage(spec);
+            const blob = await renderPoemImage({ ...spec, link: SHARE_LINK });
             const r = await shareImage(blob, `doost-${Date.now()}.png`, spec.title);
             if (r === 'saved') toast('تصویر ذخیره شد');
             if (r !== 'cancelled') closeSheet();
@@ -614,7 +575,7 @@ function poemContext(p) {
 
 function poemText(p, verses) {
   const { poet } = poemContext(p);
-  return `${verses.map((v) => v[1]).join('\n')}\n\n${poet.name}، ${cats[p.catIdx].title}، ${p.title}\nارسال شده از دوست`;
+  return `${verses.map((v) => v[1]).join('\n')}\n\n${poet.name}، ${cats[p.catIdx].title}، ${p.title}\n${SIGNATURE}`;
 }
 
 async function showPoem(id, params) {
@@ -703,7 +664,7 @@ async function showPoem(id, params) {
       const b = tool.closest('.b');
       const k = +b.dataset.v;
       const verses = p.verses.slice(k, k + +b.dataset.n);
-      const text = `${verses.map((v) => v[1]).join('\n')}\n\n${poet.name}، ${p.title}\nارسال شده از دوست`;
+      const text = `${verses.map((v) => v[1]).join('\n')}\n\n${poet.name}، ${p.title}\n${SIGNATURE}`;
       if (tool.dataset.vt === 'dict') lookupWord(tool.dataset.word);
       else if (tool.dataset.vt === 'copy') {
         await copyText(text);
@@ -1244,7 +1205,7 @@ async function showFaalResult(n) {
   }
   const title = `غزل شمارهٔ ${fa(r.n)}`;
   const spec = { title, poet: 'حافظ', section: 'فال حافظ', verses: r.verses, note: r.interpretation };
-  const text = `${r.verses.map((v) => v[1]).join('\n')}\n\nتعبیر: ${r.interpretation}\n\nحافظ، فال حافظ، ${title}\nارسال شده از دوست`;
+  const text = `${r.verses.map((v) => v[1]).join('\n')}\n\nتعبیر: ${r.interpretation}\n\nحافظ، فال حافظ، ${title}\n${SIGNATURE}`;
   setHeader({
     title: 'فال حافظ',
     actions: `<button class="icon-btn narrow-only" data-fa="share" aria-label="اشتراک‌گذاری" title="اشتراک‌گذاری">${icon('share')}</button>`,

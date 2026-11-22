@@ -46,7 +46,7 @@ function wrap(ctx, text, maxW) {
   return lines;
 }
 
-export async function renderPoemImage({ title, poet, verses, note }) {
+export async function renderPoemImage({ title, poet, verses, note, link }) {
   await Promise.all([
     document.fonts.load('700 56px Amiri'),
     document.fonts.load('46px Amiri'),
@@ -119,6 +119,10 @@ export async function renderPoemImage({ title, poet, verses, note }) {
   ops.push({ rule: true, y });
   y += 70;
   ops.push({ font: '700 30px Estedad', color: C.teal, align: 'center', x: W / 2, y, text: 'دوست · گنجینه همراه شعر پارسی' });
+  if (link) {
+    y += 48;
+    ops.push({ font: '24px Estedad', color: C.muted, align: 'center', x: W / 2, y, text: link, dir: 'ltr' });
+  }
   const H = y + 70;
 
   // Draw pass.
@@ -155,6 +159,7 @@ export async function renderPoemImage({ title, poet, verses, note }) {
     }
     ctx.fillStyle = op.color;
     ctx.textAlign = op.align;
+    ctx.direction = op.dir || 'rtl';
     ctx.fillText(op.text, op.x, op.y);
   }
   return new Promise((resolve, reject) => canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('toBlob'))), 'image/png'));
