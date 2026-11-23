@@ -47,11 +47,9 @@
 
 ### Why it is fast and light
 
-- The 341 MB SQLite database is packed into **63 MB** of compressed data, and the app no longer loads a whole database into memory.
-- At startup the app reads only a **1 MB catalog**, in 100–250 ms. Verses are stored in small blocks and loaded only when needed. Persian text is re-encoded to one byte per letter before compression.
-- Poems are stored in reading order, so the next poem is usually already loaded and "search in this poet" is just a range.
-- Verse search uses a prefix-sharded word index in a Web Worker: **15–120 ms** per page of results, without blocking the screen.
-- The fonts are subset WOFF2 files: 325 KB instead of 1.1 MB.
+`tools/build-data.mjs` turns the 341 MB Ganjoor SQLite database into **63 MB** of app data, once, at build time, so the app never loads a database. Persian letters take 2 bytes each in UTF-8, so the builder gives the 255 most frequent characters a 1-byte code each (rarer ones are escaped). That cuts the verse text from 208 MB to 118 MB before compression and saves 16% after gzip. Poems are stored in **reading order** (famous poets first, then each poet's books) and cut into ~64 KB gzip blocks: opening a poem loads one block, the next poem is usually in the same block, and "search in this poet or book" is just a range of poem numbers. For search, the builder makes an **inverted index**, a list of poems for every word, stored as delta-encoded varints and split by word prefix into small files, so a query reads only the few files it needs.
+
+At start-up the app reads only a **1 MB catalog** (poets, books and poem titles), in 100–250 ms. A search intersects the poem lists of its words (the last word as a prefix), then checks the exact phrase in those poems' verses, in a **Web Worker**: 15–120 ms per page of results, without blocking the screen. Normalization, shared by the builder and the app, ignores diacritics, half-spaces and Arabic letter forms. The fonts are subset WOFF2 files: 325 KB instead of 1.1 MB.
 
 ### Technology
 
